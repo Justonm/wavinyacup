@@ -1,0 +1,755 @@
+
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Machakos County Team Registration System Documentation</title>
+        <style>
+            @media print {
+                body { margin: 0; }
+                .no-print { display: none; }
+                .page-break { page-break-before: always; }
+            }
+            
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                margin: 0;
+                padding: 20px;
+                color: #333;
+                background-color: #f8f9fa;
+            }
+            
+            .container {
+                max-width: 1200px;
+                margin: 0 auto;
+                background: white;
+                padding: 40px;
+                box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                border-radius: 10px;
+            }
+            
+            .header {
+                text-align: center;
+                border-bottom: 3px solid #3498db;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }
+            
+            .header h1 {
+                color: #2c3e50;
+                margin: 0;
+                font-size: 2.5em;
+            }
+            
+            .header p {
+                color: #7f8c8d;
+                margin: 10px 0 0 0;
+                font-size: 1.1em;
+            }
+            
+            h1 {
+                color: #2c3e50;
+                border-bottom: 3px solid #3498db;
+                padding-bottom: 10px;
+                margin-top: 40px;
+            }
+            
+            h2 {
+                color: #34495e;
+                border-bottom: 2px solid #ecf0f1;
+                padding-bottom: 5px;
+                margin-top: 30px;
+            }
+            
+            h3 {
+                color: #7f8c8d;
+                margin-top: 25px;
+            }
+            
+            code {
+                background-color: #f8f9fa;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-family: "Courier New", monospace;
+                border: 1px solid #e9ecef;
+            }
+            
+            pre {
+                background-color: #f8f9fa;
+                padding: 20px;
+                border-radius: 8px;
+                overflow-x: auto;
+                border-left: 4px solid #3498db;
+                margin: 20px 0;
+            }
+            
+            pre code {
+                background-color: transparent;
+                padding: 0;
+                border: none;
+            }
+            
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 20px 0;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            
+            th, td {
+                border: 1px solid #ddd;
+                padding: 12px;
+                text-align: left;
+            }
+            
+            th {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+            }
+            
+            tr:nth-child(even) {
+                background-color: #f8f9fa;
+            }
+            
+            .highlight {
+                background-color: #fff3cd;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #ffc107;
+                margin: 15px 0;
+            }
+            
+            .success {
+                background-color: #d4edda;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #28a745;
+                margin: 15px 0;
+            }
+            
+            .warning {
+                background-color: #fff3cd;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #ffc107;
+                margin: 15px 0;
+            }
+            
+            .info {
+                background-color: #d1ecf1;
+                padding: 15px;
+                border-radius: 8px;
+                border-left: 4px solid #17a2b8;
+                margin: 15px 0;
+            }
+            
+            .page-break {
+                page-break-before: always;
+            }
+            
+            .toc {
+                background-color: #f8f9fa;
+                padding: 25px;
+                border-radius: 8px;
+                margin: 30px 0;
+                border: 2px solid #e9ecef;
+            }
+            
+            .toc h2 {
+                color: #2c3e50;
+                border-bottom: 2px solid #3498db;
+                margin-top: 0;
+            }
+            
+            .toc ul {
+                list-style-type: none;
+                padding-left: 0;
+            }
+            
+            .toc li {
+                margin: 8px 0;
+                padding: 5px 0;
+            }
+            
+            .toc a {
+                text-decoration: none;
+                color: #3498db;
+                font-weight: 500;
+                padding: 5px 10px;
+                border-radius: 4px;
+                transition: background-color 0.3s;
+            }
+            
+            .toc a:hover {
+                background-color: #e3f2fd;
+                text-decoration: none;
+            }
+            
+            .toc a:visited {
+                color: #3498db;
+            }
+            
+            .footer {
+                text-align: center;
+                margin-top: 50px;
+                padding-top: 20px;
+                border-top: 2px solid #ecf0f1;
+                color: #7f8c8d;
+            }
+            
+            .print-button {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 14px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                transition: background-color 0.3s;
+            }
+            
+            .print-button:hover {
+                background-color: #2980b9;
+            }
+            
+            @media print {
+                .print-button {
+                    display: none;
+                }
+                body {
+                    background-color: white;
+                }
+                .container {
+                    box-shadow: none;
+                    padding: 0;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <button class="print-button no-print" onclick="window.print()">
+            🖨️ Print to PDF
+        </button>
+        
+        <div class="container">
+            <div class="header">
+                <h1>Machakos County Team Registration System</h1>
+                <p>Complete System Documentation</p>
+                <p><strong>Version 1.0</strong> | <strong>Last Updated: July 31, 2025</strong></p>
+            </div>
+            
+            <div class="toc">
+                <h2>📋 Table of Contents</h2>
+                <ul>
+                    <li><a href="#system-overview">1. System Overview</a></li>
+                    <li><a href="#installation-guide">2. Installation Guide</a></li>
+                    <li><a href="#system-architecture">3. System Architecture</a></li>
+                    <li><a href="#database-schema">4. Database Schema</a></li>
+                    <li><a href="#user-guide">5. User Guide</a></li>
+                    <li><a href="#admin-guide">6. Admin Guide</a></li>
+                    <li><a href="#technical-specifications">7. Technical Specifications</a></li>
+                    <li><a href="#troubleshooting">8. Troubleshooting</a></li>
+                    <li><a href="#api-documentation">9. API Documentation</a></li>
+                    <li><a href="#security-features">10. Security Features</a></li>
+                </ul>
+            </div>
+            
+            <div class="page-break"></div>
+            
+            <h1 id="Machakos County Team Registration System">Machakos County Team Registration System</h1>
+<h2 id="Complete System Documentation">Complete System Documentation</h2></p><p>---</p><p><h2 id="Table of Contents">Table of Contents</h2>
+1. <a href="#system-overview">System Overview</a>
+2. <a href="#installation-guide">Installation Guide</a>
+3. <a href="#system-architecture">System Architecture</a>
+4. <a href="#database-schema">Database Schema</a>
+5. <a href="#user-guide">User Guide</a>
+6. <a href="#admin-guide">Admin Guide</a>
+7. <a href="#technical-specifications">Technical Specifications</a>
+8. <a href="#troubleshooting">Troubleshooting</a>
+9. <a href="#api-documentation">API Documentation</a>
+10. <a href="#security-features">Security Features</a></p><p>---</p><p><h2 id="System Overview">System Overview</h2></p><p><h3 id="Purpose">Purpose</h3>
+The Machakos County Team Registration System is a comprehensive web-based application designed to manage football team registrations, players, coaches, and administrative functions for Machakos County. The system provides a centralized platform for tracking teams, managing registrations, and generating reports.</p><p><h3 id="Key Features">Key Features</h3>
+<li><strong>Team Management</strong>: Register and manage football teams</li>
+<li><strong>Player Registration</strong>: Track individual players and their details</li>
+<li><strong>Coach Management</strong>: Manage coach information and licenses</li>
+<li><strong>Registration Workflow</strong>: Streamlined approval process</li>
+<li><strong>Reporting</strong>: Comprehensive analytics and reporting</li>
+<li><strong>Admin Dashboard</strong>: Full administrative control panel</li>
+<li><strong>User Authentication</strong>: Secure login system</li></p><p><h3 id="Target Users">Target Users</h3>
+<li><strong>County Administrators</strong>: Full system access</li>
+<li><strong>Team Managers</strong>: Team registration and management</li>
+<li><strong>Players</strong>: Individual registration</li>
+<li><strong>Coaches</strong>: Coach registration and profile management</li></p><p>---</p><p><h2 id="Installation Guide">Installation Guide</h2></p><p><h3 id="Prerequisites">Prerequisites</h3>
+<li>PHP 7.4 or higher</li>
+<li>MySQL 5.7 or higher</li>
+<li>Web server (Apache/Nginx) or PHP built-in server</li>
+<li>Composer (for dependency management)</li></p><p><h3 id="Step-by-Step Installation">Step-by-Step Installation</h3></p><p>#### 1. System Requirements Check
+<pre><code><h1 id="Check PHP version">Check PHP version</h1>
+php -v</p><p><h1 id="Check MySQL">Check MySQL</h1>
+mysql --version</p><p><h1 id="Check if required PHP extensions are installed">Check if required PHP extensions are installed</h1>
+php -m | grep -E "(pdo|mysqli|session|json)"</code></pre></p><p>#### 2. Database Setup
+<pre><code><h1 id="Create database">Create database</h1>
+mysql -u root -p
+CREATE DATABASE machakos_teams;
+USE machakos_teams;</p><p><h1 id="Import schema">Import schema</h1>
+mysql -u root -p machakos_teams < database/schema.sql</code></pre></p><p>#### 3. Configuration
+1. Copy <code>config/config.example.php</code> to <code>config/config.php</code>
+2. Update database credentials in <code>config/database.php</code>
+3. Set up email configuration in <code>config/config.php</code></p><p>#### 4. Web Server Setup</p><p><strong>Option A: PHP Built-in Server (Development)</strong>
+<pre><code>cd /path/to/machakos-teams
+php -S localhost:8000</code></pre></p><p><strong>Option B: Apache Setup</strong>
+<pre><code><h1 id="Create virtual host">Create virtual host</h1>
+sudo ln -s /path/to/machakos-teams /var/www/html/machakos-teams
+sudo chown -R www-data:www-data /path/to/machakos-teams</code></pre></p><p>#### 5. Initial Setup
+1. Access <code>http://localhost:8000/setup.php</code>
+2. Follow the setup wizard
+3. Create admin user account</p><p><h3 id="Default Credentials">Default Credentials</h3>
+<li><strong>Admin Email</strong>: <code>admin@machakoscounty.go.ke</code></li>
+<li><strong>Admin Password</strong>: <code>password</code></li></p><p>---</p><p><h2 id="System Architecture">System Architecture</h2></p><p><h3 id="Technology Stack">Technology Stack</h3>
+<li><strong>Backend</strong>: PHP 7.4+</li>
+<li><strong>Database</strong>: MySQL 5.7+</li>
+<li><strong>Frontend</strong>: HTML5, CSS3, JavaScript</li>
+<li><strong>UI Framework</strong>: Bootstrap 5.3</li>
+<li><strong>Charts</strong>: Chart.js</li>
+<li><strong>Icons</strong>: Font Awesome 6.0</li></p><p><h3 id="Directory Structure">Directory Structure</h3>
+<pre><code>machakos-teams/
+├── admin/                 # Admin panel files
+│   ├── dashboard.php     # Main dashboard
+│   ├── teams.php         # Teams management
+│   ├── players.php       # Players management
+│   ├── coaches.php       # Coaches management
+│   ├── registrations.php # Registration approvals
+│   ├── reports.php       # Analytics and reports
+│   └── settings.php      # System settings
+├── auth/                 # Authentication files
+│   ├── login.php         # Login page
+│   └── logout.php        # Logout handler
+├── config/               # Configuration files
+│   ├── config.php        # Main configuration
+│   └── database.php      # Database configuration
+├── database/             # Database files
+│   └── schema.sql        # Database schema
+├── docs/                 # Documentation
+├── sessions/             # Session storage
+└── index.php             # Main entry point</code></pre></p><p><h3 id="Core Components">Core Components</h3></p><p>#### 1. Configuration System (<code>config/config.php</code>)
+<li>Application constants</li>
+<li>Session management</li>
+<li>Helper functions</li>
+<li>Permission system</li></p><p>#### 2. Database Layer (<code>config/database.php</code>)
+<li>PDO database connection</li>
+<li>Query execution methods</li>
+<li>Data validation</li></p><p>#### 3. Authentication System (<code>auth/</code>)
+<li>User login/logout</li>
+<li>Session management</li>
+<li>Permission checking</li></p><p>#### 4. Admin Panel (<code>admin/</code>)
+<li>Dashboard with statistics</li>
+<li>CRUD operations for all entities</li>
+<li>Reporting and analytics</li></p><p>---</p><p><h2 id="Database Schema">Database Schema</h2></p><p><h3 id="Core Tables">Core Tables</h3></p><p>#### 1. Users Table
+<pre><code>CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'manager', 'player', 'coach') NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);</code></pre></p><p>#### 2. Teams Table
+<pre><code>CREATE TABLE teams (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    team_code VARCHAR(20) UNIQUE NOT NULL,
+    ward_id INT NOT NULL,
+    status ENUM('active', 'inactive', 'suspended') DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (ward_id) REFERENCES wards(id)
+);</code></pre></p><p>#### 3. Players Table
+<pre><code>CREATE TABLE players (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    team_id INT,
+    ward_id INT,
+    position VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (ward_id) REFERENCES wards(id)
+);</code></pre></p><p>#### 4. Coaches Table
+<pre><code>CREATE TABLE coaches (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    team_id INT,
+    ward_id INT,
+    license_number VARCHAR(50),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (ward_id) REFERENCES wards(id)
+);</code></pre></p><p>#### 5. Team Registrations Table
+<pre><code>CREATE TABLE team_registrations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    team_id INT NOT NULL,
+    ward_id INT NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_id) REFERENCES teams(id),
+    FOREIGN KEY (ward_id) REFERENCES wards(id)
+);</code></pre></p><p><h3 id="Geographic Tables">Geographic Tables</h3></p><p>#### 6. Sub Counties Table
+<pre><code>CREATE TABLE sub_counties (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(10) UNIQUE NOT NULL
+);</code></pre></p><p>#### 7. Wards Table
+<pre><code>CREATE TABLE wards (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    sub_county_id INT NOT NULL,
+    code VARCHAR(10) UNIQUE NOT NULL,
+    FOREIGN KEY (sub_county_id) REFERENCES sub_counties(id)
+);</code></pre></p><p>---</p><p><h2 id="User Guide">User Guide</h2></p><p><h3 id="Getting Started">Getting Started</h3></p><p>#### 1. Accessing the System
+1. Open your web browser
+2. Navigate to <code>http://localhost:8000</code>
+3. You'll be redirected to the login page</p><p>#### 2. Login Process
+1. Enter your email address
+2. Enter your password
+3. Click "Login"
+4. You'll be redirected to the admin dashboard</p><p>#### 3. Navigation
+The system uses a sidebar navigation with the following sections:
+<li><strong>Dashboard</strong>: Overview and statistics</li>
+<li><strong>Teams</strong>: Manage football teams</li>
+<li><strong>Players</strong>: Manage player registrations</li>
+<li><strong>Coaches</strong>: Manage coach information</li>
+<li><strong>Registrations</strong>: Approve team registrations</li>
+<li><strong>Reports</strong>: View analytics and reports</li>
+<li><strong>Settings</strong>: System configuration</li></p><p><h3 id="Dashboard Overview">Dashboard Overview</h3></p><p>#### Statistics Cards
+The dashboard displays four key metrics:
+<li><strong>Active Teams</strong>: Number of currently active teams</li>
+<li><strong>Registered Players</strong>: Total number of registered players</li>
+<li><strong>Coaches</strong>: Number of registered coaches</li>
+<li><strong>Pending Approvals</strong>: Teams awaiting approval</li></p><p>#### Charts
+<li><strong>Teams by Sub-County</strong>: Bar chart showing team distribution</li>
+<li><strong>Recent Teams</strong>: List of recently registered teams</li></p><p><h3 id="Managing Teams">Managing Teams</h3></p><p>#### Viewing Teams
+1. Click "Teams" in the sidebar
+2. View all teams in a table format
+3. Use search and filter options</p><p>#### Adding a New Team
+1. Click "Add New Team" button
+2. Fill in team details:
+   - Team name
+   - Ward selection
+   - Team code
+3. Click "Save"</p><p>#### Editing Teams
+1. Click the edit icon (pencil) next to a team
+2. Modify the required fields
+3. Click "Update"</p><p>#### Deleting Teams
+1. Click the delete icon (trash) next to a team
+2. Confirm the deletion</p><p><h3 id="Managing Players">Managing Players</h3></p><p>#### Viewing Players
+1. Click "Players" in the sidebar
+2. View all players with their team associations
+3. Filter by team or status</p><p>#### Adding Players
+1. Click "Add New Player" button
+2. Fill in player details:
+   - Personal information
+   - Team assignment
+   - Position
+3. Click "Save"</p><p><h3 id="Managing Coaches">Managing Coaches</h3></p><p>#### Viewing Coaches
+1. Click "Coaches" in the sidebar
+2. View all coaches with their licenses
+3. Filter by team or status</p><p>#### Adding Coaches
+1. Click "Add New Coach" button
+2. Fill in coach details:
+   - Personal information
+   - License number
+   - Team assignment
+3. Click "Save"</p><p><h3 id="Registration Approvals">Registration Approvals</h3></p><p>#### Viewing Registrations
+1. Click "Registrations" in the sidebar
+2. View pending, approved, and rejected registrations
+3. Filter by status</p><p>#### Approving Registrations
+1. Click the checkmark icon next to a pending registration
+2. Confirm the approval
+3. The team status will be updated</p><p>#### Rejecting Registrations
+1. Click the X icon next to a pending registration
+2. Provide rejection reason
+3. Confirm the rejection</p><p><h3 id="Reports and Analytics">Reports and Analytics</h3></p><p>#### Accessing Reports
+1. Click "Reports" in the sidebar
+2. View various statistics and charts
+3. Export data as needed</p><p>#### Available Reports
+<li><strong>Teams by Sub-County</strong>: Geographic distribution</li>
+<li><strong>Player Statistics</strong>: Registration trends</li>
+<li><strong>Coach Statistics</strong>: License compliance</li>
+<li><strong>Registration Trends</strong>: Approval rates</li></p><p><h3 id="System Settings">System Settings</h3></p><p>#### General Settings
+1. Click "Settings" in the sidebar
+2. Navigate to "General Settings" tab
+3. Modify application settings:
+   - Application name
+   - Contact email
+   - Timezone</p><p>#### Email Configuration
+1. Go to "Email Settings" tab
+2. Configure SMTP settings:
+   - SMTP host
+   - SMTP port
+   - Username and password</p><p>#### Security Settings
+1. Go to "Security" tab
+2. Configure:
+   - Debug mode
+   - Maintenance mode
+   - Session timeout</p><p>---</p><p><h2 id="Admin Guide">Admin Guide</h2></p><p><h3 id="Administrative Functions">Administrative Functions</h3></p><p>#### User Management
+<li>Create new user accounts</li>
+<li>Assign roles and permissions</li>
+<li>Deactivate user accounts</li>
+<li>Reset passwords</li></p><p>#### System Monitoring
+<li>Monitor user activity</li>
+<li>Track system performance</li>
+<li>View error logs</li>
+<li>Monitor database usage</li></p><p>#### Data Management
+<li>Backup database</li>
+<li>Restore from backup</li>
+<li>Export data</li>
+<li>Import data</li></p><p><h3 id="Security Best Practices">Security Best Practices</h3></p><p>#### Password Policy
+<li>Enforce strong passwords</li>
+<li>Regular password updates</li>
+<li>Account lockout after failed attempts</li></p><p>#### Access Control
+<li>Role-based permissions</li>
+<li>Session management</li>
+<li>IP restrictions (if needed)</li></p><p>#### Data Protection
+<li>Encrypt sensitive data</li>
+<li>Regular backups</li>
+<li>Secure file permissions</li></p><p><h3 id="Backup Procedures">Backup Procedures</h3></p><p>#### Automated Backups
+1. Set up cron job for daily backups
+2. Store backups securely
+3. Test restore procedures regularly</p><p>#### Manual Backups
+<pre><code><h1 id="Database backup">Database backup</h1>
+mysqldump -u root -p machakos_teams > backup_$(date +%Y%m%d).sql</p><p><h1 id="File backup">File backup</h1>
+tar -czf files_backup_$(date +%Y%m%d).tar.gz /path/to/machakos-teams</code></pre></p><p><h3 id="Maintenance Procedures">Maintenance Procedures</h3></p><p>#### Regular Maintenance
+<li>Monitor disk space</li>
+<li>Check database performance</li>
+<li>Update system logs</li>
+<li>Review error logs</li></p><p>#### System Updates
+<li>Backup before updates</li>
+<li>Test in staging environment</li>
+<li>Deploy during low-traffic periods</li>
+<li>Monitor after deployment</li></p><p>---</p><p><h2 id="Technical Specifications">Technical Specifications</h2></p><p><h3 id="System Requirements">System Requirements</h3></p><p>#### Server Requirements
+<li><strong>Operating System</strong>: Linux/Windows/macOS</li>
+<li><strong>Web Server</strong>: Apache 2.4+ or Nginx 1.18+</li>
+<li><strong>PHP</strong>: 7.4 or higher</li>
+<li><strong>MySQL</strong>: 5.7 or higher</li>
+<li><strong>Memory</strong>: Minimum 512MB RAM</li>
+<li><strong>Storage</strong>: Minimum 1GB free space</li></p><p>#### PHP Extensions Required
+<li>PDO</li>
+<li>PDO_MySQL</li>
+<li>mysqli</li>
+<li>session</li>
+<li>json</li>
+<li>mbstring</li>
+<li>openssl</li></p><p>#### Browser Support
+<li>Chrome 90+</li>
+<li>Firefox 88+</li>
+<li>Safari 14+</li>
+<li>Edge 90+</li></p><p><h3 id="Performance Specifications">Performance Specifications</h3></p><p>#### Response Times
+<li>Page load: < 3 seconds</li>
+<li>Database queries: < 1 second</li>
+<li>File uploads: < 10 seconds</li></p><p>#### Concurrent Users
+<li>Recommended: 50 concurrent users</li>
+<li>Maximum: 100 concurrent users</li></p><p>#### Database Performance
+<li>Query optimization</li>
+<li>Indexed tables</li>
+<li>Connection pooling</li></p><p><h3 id="Security Specifications">Security Specifications</h3></p><p>#### Authentication
+<li>Password hashing (bcrypt)</li>
+<li>Session management</li>
+<li>CSRF protection</li>
+<li>SQL injection prevention</li></p><p>#### Data Protection
+<li>Input validation</li>
+<li>Output escaping</li>
+<li>File upload restrictions</li>
+<li>Secure headers</li></p><p>---</p><p><h2 id="Troubleshooting">Troubleshooting</h2></p><p><h3 id="Common Issues">Common Issues</h3></p><p>#### 1. Login Problems
+<strong>Symptoms</strong>: Cannot log in, redirect loops
+<strong>Solutions</strong>:
+<li>Check database connection</li>
+<li>Verify user credentials</li>
+<li>Clear browser cache</li>
+<li>Check session configuration</li></p><p>#### 2. Database Connection Errors
+<strong>Symptoms</strong>: "Database connection failed"
+<strong>Solutions</strong>:
+<li>Verify MySQL is running</li>
+<li>Check database credentials</li>
+<li>Test connection manually</li>
+<li>Check firewall settings</li></p><p>#### 3. Session Issues
+<strong>Symptoms</strong>: Logged out frequently, session warnings
+<strong>Solutions</strong>:
+<li>Check session directory permissions</li>
+<li>Verify session configuration</li>
+<li>Clear session files</li>
+<li>Check PHP session settings</li></p><p>#### 4. File Upload Problems
+<strong>Symptoms</strong>: Cannot upload files, permission errors
+<strong>Solutions</strong>:
+<li>Check file permissions</li>
+<li>Verify upload directory exists</li>
+<li>Check file size limits</li>
+<li>Validate file types</li></p><p><h3 id="Error Logs">Error Logs</h3></p><p>#### PHP Error Log
+<pre><code><h1 id="Check PHP error log">Check PHP error log</h1>
+tail -f /var/log/php_errors.log</code></pre></p><p>#### MySQL Error Log
+<pre><code><h1 id="Check MySQL error log">Check MySQL error log</h1>
+tail -f /var/log/mysql/error.log</code></pre></p><p>#### Apache Error Log
+<pre><code><h1 id="Check Apache error log">Check Apache error log</h1>
+tail -f /var/log/apache2/error.log</code></pre></p><p><h3 id="Debug Mode">Debug Mode</h3></p><p>#### Enabling Debug Mode
+1. Edit <code>config/config.php</code>
+2. Set <code>DEBUG_MODE = true</code>
+3. Check error logs for detailed information</p><p>#### Common Debug Steps
+1. Check browser console for JavaScript errors
+2. Verify network requests in browser dev tools
+3. Test database queries manually
+4. Check file permissions</p><p>---</p><p><h2 id="API Documentation">API Documentation</h2></p><p><h3 id="Authentication Endpoints">Authentication Endpoints</h3></p><p>#### Login
+<pre><code>POST /auth/login.php
+Content-Type: application/x-www-form-urlencoded</p><p>Parameters:
+<li>email: string (required)</li>
+<li>password: string (required)</li></p><p>Response:
+{
+    "success": true,
+    "message": "Login successful",
+    "user": {
+        "id": 1,
+        "username": "admin",
+        "role": "admin"
+    }
+}</code></pre></p><p>#### Logout
+<pre><code>GET /auth/logout.php</p><p>Response:
+{
+    "success": true,
+    "message": "Logged out successfully"
+}</code></pre></p><p><h3 id="Team Management API">Team Management API</h3></p><p>#### Get All Teams
+<pre><code>GET /api/teams.php</p><p>Response:
+{
+    "success": true,
+    "teams": [
+        {
+            "id": 1,
+            "name": "Team Name",
+            "team_code": "T001",
+            "ward_name": "Ward Name",
+            "status": "active"
+        }
+    ]
+}</code></pre></p><p>#### Create Team
+<pre><code>POST /api/teams.php
+Content-Type: application/json</p><p>{
+    "name": "Team Name",
+    "ward_id": 1,
+    "team_code": "T001"
+}</p><p>Response:
+{
+    "success": true,
+    "message": "Team created successfully",
+    "team_id": 1
+}</code></pre></p><p><h3 id="Player Management API">Player Management API</h3></p><p>#### Get All Players
+<pre><code>GET /api/players.php</p><p>Response:
+{
+    "success": true,
+    "players": [
+        {
+            "id": 1,
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john@example.com",
+            "team_name": "Team Name",
+            "position": "Forward"
+        }
+    ]
+}</code></pre></p><p><h3 id="Registration API">Registration API</h3></p><p>#### Get Registrations
+<pre><code>GET /api/registrations.php</p><p>Response:
+{
+    "success": true,
+    "registrations": [
+        {
+            "id": 1,
+            "team_name": "Team Name",
+            "ward_name": "Ward Name",
+            "status": "pending",
+            "created_at": "2025-07-31 10:00:00"
+        }
+    ]
+}</code></pre></p><p>---</p><p><h2 id="Security Features">Security Features</h2></p><p><h3 id="Authentication Security">Authentication Security</h3></p><p>#### Password Security
+<li>Bcrypt hashing with salt</li>
+<li>Minimum password length: 8 characters</li>
+<li>Password complexity requirements</li>
+<li>Account lockout after failed attempts</li></p><p>#### Session Security
+<li>Secure session configuration</li>
+<li>Session timeout: 60 minutes</li>
+<li>Session regeneration on login</li>
+<li>CSRF token protection</li></p><p><h3 id="Data Protection">Data Protection</h3></p><p>#### Input Validation
+<li>Server-side validation for all inputs</li>
+<li>SQL injection prevention</li>
+<li>XSS protection</li>
+<li>File upload validation</li></p><p>#### Output Security
+<li>HTML entity encoding</li>
+<li>Content Security Policy headers</li>
+<li>Secure HTTP headers</li>
+<li>Data sanitization</li></p><p><h3 id="Access Control">Access Control</h3></p><p>#### Role-Based Permissions
+<li>Admin: Full system access</li>
+<li>Manager: Team management</li>
+<li>Player: Personal profile</li>
+<li>Coach: Coach profile</li></p><p>#### Session Management
+<li>Secure session storage</li>
+<li>Session timeout</li>
+<li>Automatic logout</li>
+<li>Session hijacking protection</li></p><p><h3 id="File Security">File Security</h3></p><p>#### Upload Security
+<li>File type validation</li>
+<li>File size limits</li>
+<li>Secure file storage</li>
+<li>Virus scanning (recommended)</li></p><p>#### Directory Security
+<li>Secure file permissions</li>
+<li>Protected configuration files</li>
+<li>Backup security</li>
+<li>Log file protection</li></p><p>---</p><p><h2 id="Conclusion">Conclusion</h2></p><p>The Machakos County Team Registration System provides a comprehensive solution for managing football team registrations and administrative functions. With its user-friendly interface, robust security features, and comprehensive reporting capabilities, the system is ready for production use.</p><p><h3 id="Support and Maintenance">Support and Maintenance</h3></p><p>For technical support or questions about the system:
+<li>Email: admin@machakoscounty.go.ke</li>
+<li>System Administrator: County IT Department</li>
+<li>Documentation: Available in the <code>/docs</code> directory</li></p><p><h3 id="Future Enhancements">Future Enhancements</h3></p><p>Potential improvements for future versions:
+<li>Mobile application</li>
+<li>SMS notifications</li>
+<li>Advanced reporting</li>
+<li>Integration with other county systems</li>
+<li>Multi-language support</li></p><p>---</p><p><em>Documentation Version: 1.0</em>  
+<em>Last Updated: July 31, 2025</em>  
+<em>System Version: 1.0</em> 
+            
+            <div class="footer">
+                <p><strong>Machakos County Team Registration System</strong></p>
+                <p>Documentation Version: 1.0 | Last Updated: July 31, 2025 | System Version: 1.0</p>
+                <p>For technical support: admin@machakoscounty.go.ke</p>
+            </div>
+        </div>
+        
+        <script>
+            // Add smooth scrolling for table of contents links
+            document.querySelectorAll(".toc a").forEach(anchor => {
+                anchor.addEventListener("click", function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute("href").substring(1);
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start"
+                        });
+                    }
+                });
+            });
+            
+            // Add print functionality
+            function printDocument() {
+                window.print();
+            }
+        </script>
+    </body>
+    </html>
