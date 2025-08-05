@@ -1,12 +1,13 @@
 <?php
-require_once '../config/config.php';
+require_once dirname(__DIR__) . '/config/config.php';
+require_once dirname(__DIR__) . '/includes/image_upload.php';
 
 // Check if user is logged in and has permission
 if (!is_logged_in() || !has_permission('manage_teams')) {
     redirect('../auth/login.php');
 }
 
-$user = get_current_user();
+$user = get_current_user_data();
 $db = db();
 $error = '';
 $success = '';
@@ -34,29 +35,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($founded_year < 1900 || $founded_year > date('Y')) {
         $error = 'Invalid founded year.';
     } else {
-        // Generate unique team code
-        $ward = $db->fetch("SELECT code FROM wards WHERE id = ?", [$ward_id]);
-        $team_code = generate_team_code($ward['code']);
+        // Handle image uploads
+        $logo_path = null;
+        $team_photo = null;
         
-        try {
-            $db->query("
-                INSERT INTO teams (name, ward_id, coach_id, team_code, founded_year, home_ground, team_colors) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ", [$team_name, $ward_id, $user['id'], $team_code, $founded_year, $home_ground, $team_colors]);
+        // Handle team logo upload
+        if (isset($_FILES['team_logo']) && $_FILES['team_logo']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $upload_result = upload_image($_FILES['team_logo'], 'team', 'logo');
+            if (!$upload_result['success']) {
+                $error = 'Logo upload failed: ' . $upload_result['error'];
+            } else {
+                $logo_path = $upload_result['path'];
+            }
+        }
+        
+        // Handle team photo upload
+        if (empty($error) && isset($_FILES['team_photo']) && $_FILES['team_photo']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $upload_result = upload_image($_FILES['team_photo'], 'team', 'photo');
+            if (!$upload_result['success']) {
+                $error = 'Team photo upload failed: ' . $upload_result['error'];
+            } else {
+                $team_photo = $upload_result['path'];
+            }
+        }
+        
+        if (empty($error)) {
+            // Generate unique team code
+            $ward = $db->fetchRow("SELECT code FROM wards WHERE id = ?", [$ward_id]);
+            $team_code = generate_team_code($ward['code']);
             
-            $team_id = $db->lastInsertId();
-            
-            // Create team registration
-            $db->query("
-                INSERT INTO team_registrations (team_id, season_year, registration_date) 
-                VALUES (?, ?, CURDATE())
-            ", [$team_id, date('Y')]);
-            
-            log_activity($user['id'], 'team_registration', "Registered team: $team_name");
-            $success = "Team '$team_name' registered successfully! Team Code: $team_code";
-            
-        } catch (Exception $e) {
-            $error = 'Failed to register team. Please try again.';
+            try {
+                $db->query("
+                    INSERT INTO teams (name, ward_id, coach_id, team_code, founded_year, home_ground, team_colors, logo_path, team_photo) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ", [$team_name, $ward_id, $user['id'], $team_code, $founded_year, $home_ground, $team_colors, $logo_path, $team_photo]);
+                
+                $team_id = $db->lastInsertId();
+                
+                // Create team registration
+                $db->query("
+                    INSERT INTO team_registrations (team_id, season_year, registration_date) 
+                    VALUES (?, ?, CURDATE())
+                ", [$team_id, date('Y')]);
+                
+                log_activity($user['id'], 'team_registration', "Registered team: $team_name");
+                $success = "Team '$team_name' registered successfully! Team Code: $team_code";
+                
+            } catch (Exception $e) {
+                // Delete uploaded images if database insert failed
+                if ($logo_path) {
+                    delete_image($logo_path);
+                }
+                if ($team_photo) {
+                    delete_image($team_photo);
+                }
+                $error = 'Failed to register team. Please try again.';
+            }
         }
     }
 }
@@ -120,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     <?php endif; ?>
                     
-                    <form method="POST" action="">
+                    <form method="POST" action="" enctype="multipart/form-data">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -171,20 +205,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         
-                        <div class="mb-4">
-                            <label for="team_colors" class="form-label">
-                                <i class="fas fa-palette me-2"></i>Team Colors
-                            </label>
-                            <input type="text" class="form-control" id="team_colors" name="team_colors" 
-                                   value="<?php echo htmlspecialchars($_POST['team_colors'] ?? ''); ?>" 
-                                   placeholder="e.g., Blue and White">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <label for="team_colors" class="form-label">
+                                        <i class="fas fa-palette me-2"></i>Team Colors
+                                    </label>
+                                    <input type="text" class="form-control" id="team_colors" name="team_colors" 
+                                           value="<?php echo htmlspecialchars($_POST['team_colors'] ?? ''); ?>" 
+                                           placeholder="e.g., Blue and White">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-4">
+                                    <label for="team_logo" class="form-label">
+                                        <i class="fas fa-image me-2"></i>Team Logo
+                                    </label>
+                                    <input type="file" class="form-control" id="team_logo" name="team_logo" 
+                                           accept="image/*" onchange="previewImage(this, 'logo-preview')">
+                                    <small class="form-text text-muted">Upload team logo (JPG, PNG, GIF, max 5MB)</small>
+                                    <div id="logo-preview" class="mt-2" style="display: none;">
+                                        <img src="" alt="Logo Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="mb-4">
+                                    <label for="team_photo" class="form-label">
+                                        <i class="fas fa-camera me-2"></i>Team Photo
+                                    </label>
+                                    <input type="file" class="form-control" id="team_photo" name="team_photo" 
+                                           accept="image/*" onchange="previewImage(this, 'photo-preview')">
+                                    <small class="form-text text-muted">Upload team photo showing team members (JPG, PNG, GIF, max 5MB)</small>
+                                    <div id="photo-preview" class="mt-2" style="display: none;">
+                                        <img src="" alt="Team Photo Preview" class="img-thumbnail" style="max-width: 300px; max-height: 200px;">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-register">
                                 <i class="fas fa-save me-2"></i>Register Team
                             </button>
-                            <a href="dashboard.php" class="btn btn-outline-secondary">
+                            <a href="../admin/dashboard.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
                             </a>
                         </div>
@@ -195,5 +262,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            const img = preview.querySelector('img');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html> 

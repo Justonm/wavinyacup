@@ -2,7 +2,7 @@
 require_once '../config/config.php';
 
 // Check if user has admin permissions
-if (!has_permission('all')) {
+if (!is_logged_in() || !has_permission('manage_coaches')) {
     redirect('../auth/login.php');
 }
 
@@ -45,6 +45,14 @@ $coaches = $db->fetchAll("
         .main-content {
             background: #f8f9fa;
             min-height: 100vh;
+        }
+        .btn {
+            cursor: pointer;
+            pointer-events: auto;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -100,9 +108,9 @@ $coaches = $db->fetchAll("
                             <h2><i class="fas fa-chalkboard-teacher me-2"></i>Coaches Management</h2>
                             <p class="text-muted">Manage all registered coaches</p>
                         </div>
-                        <button class="btn btn-primary">
+                        <a href="../coaches/register.php" class="btn btn-primary" onclick="console.log('Add New Coach clicked')">
                             <i class="fas fa-plus me-2"></i>Add New Coach
-                        </button>
+                        </a>
                     </div>
                     
                     <!-- Coaches Table -->
@@ -116,9 +124,9 @@ $coaches = $db->fetchAll("
                                     <i class="fas fa-chalkboard-teacher fa-3x text-muted mb-3"></i>
                                     <h5>No Coaches Found</h5>
                                     <p class="text-muted">No coaches have been registered yet.</p>
-                                    <button class="btn btn-primary">
+                                    <a href="../coaches/register.php" class="btn btn-primary" onclick="console.log('Register First Coach clicked')">
                                         <i class="fas fa-plus me-2"></i>Register First Coach
-                                    </button>
+                                    </a>
                                 </div>
                             <?php else: ?>
                                 <div class="table-responsive">
@@ -180,5 +188,20 @@ $coaches = $db->fetchAll("
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Debug script to ensure links are working
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Coaches page loaded');
+            
+            // Add click event listeners to all buttons
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    console.log('Button clicked:', this.textContent.trim());
+                    console.log('Button href:', this.href);
+                });
+            });
+        });
+    </script>
 </body>
 </html> 

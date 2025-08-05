@@ -104,6 +104,10 @@ function get_logged_in_user() {
     return db()->fetchRow("SELECT * FROM users WHERE id = ?", [$_SESSION['user_id']]);
 }
 
+function get_current_user_data() {
+    return get_logged_in_user();
+}
+
 function has_role($role) {
     $user = get_logged_in_user();
     return $user && $user['role'] === $role;
@@ -115,9 +119,9 @@ function has_permission($permission) {
 
     $permissions = [
         'admin' => ['all'],
-        'county_admin' => ['manage_teams', 'manage_players', 'view_reports', 'approve_registrations'],
-        'sub_county_admin' => ['manage_teams', 'manage_players', 'view_reports'],
-        'ward_admin' => ['manage_teams', 'view_reports'],
+        'county_admin' => ['manage_teams', 'manage_players', 'manage_coaches', 'view_reports', 'approve_registrations'],
+        'sub_county_admin' => ['manage_teams', 'manage_players', 'manage_coaches', 'view_reports'],
+        'ward_admin' => ['manage_teams', 'manage_coaches', 'view_reports'],
         'coach' => ['manage_team', 'manage_players'],
         'captain' => ['view_team', 'view_players'],
         'player' => ['view_profile']
@@ -153,8 +157,12 @@ function validate_phone($phone) {
 
 // Logger
 function log_activity($user_id, $action, $details = '') {
-    db()->query(
-        "INSERT INTO activity_logs (user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)",
-        [$user_id, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '']
-    );
+    // For now, just log to error log since activity_logs table doesn't exist
+    error_log("Activity Log: User $user_id - $action - $details");
+    
+    // Uncomment when activity_logs table is created:
+    // db()->query(
+    //     "INSERT INTO activity_logs (user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)",
+    //     [$user_id, $action, $details, $_SERVER['REMOTE_ADDR'] ?? '', $_SERVER['HTTP_USER_AGENT'] ?? '']
+    // );
 }

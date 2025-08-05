@@ -1,12 +1,13 @@
 <?php
-require_once '../config/config.php';
+require_once dirname(__DIR__) . '/config/config.php';
+require_once dirname(__DIR__) . '/includes/image_upload.php';
 
 // Check if user is logged in and has permission
 if (!is_logged_in() || !has_permission('manage_players')) {
     redirect('../auth/login.php');
 }
 
-$user = get_current_user();
+$user = get_current_user_data();
 $db = db();
 $error = '';
 $success = '';
@@ -48,39 +49,56 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($jersey_number < 1 || $jersey_number > 99) {
         $error = 'Jersey number must be between 1 and 99.';
     } else {
-        try {
-            // Create user account for player
-            $username = strtolower($first_name . '.' . $last_name . '.' . time());
-            $password_hash = password_hash('player123', PASSWORD_DEFAULT); // Default password
-            
-            $db->query("
-                INSERT INTO users (username, email, password_hash, role, first_name, last_name, phone, id_number) 
-                VALUES (?, ?, ?, 'player', ?, ?, ?, ?)
-            ", [$username, $email, $password_hash, $first_name, $last_name, $phone, $id_number]);
-            
-            $user_id = $db->lastInsertId();
-            
-            // Create player profile
-            $db->query("
-                INSERT INTO players (user_id, team_id, position, jersey_number, height_cm, weight_kg, date_of_birth, preferred_foot) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ", [$user_id, $team_id, $position, $jersey_number, $height_cm, $weight_kg, $date_of_birth, $preferred_foot]);
-            
-            $player_id = $db->lastInsertId();
-            
-            // Create player registration
-            if ($team_id > 0) {
-                $db->query("
-                    INSERT INTO player_registrations (player_id, team_id, season_year, registration_date) 
-                    VALUES (?, ?, ?, CURDATE())
-                ", [$player_id, $team_id, date('Y')]);
+        // Handle image upload
+        $player_image = null;
+        if (isset($_FILES['player_image']) && $_FILES['player_image']['error'] !== UPLOAD_ERR_NO_FILE) {
+            $upload_result = upload_image($_FILES['player_image'], 'player', 'photo');
+            if (!$upload_result['success']) {
+                $error = 'Image upload failed: ' . $upload_result['error'];
+            } else {
+                $player_image = $upload_result['path'];
             }
-            
-            log_activity($user['id'], 'player_registration', "Registered player: $first_name $last_name");
-            $success = "Player '$first_name $last_name' registered successfully! Username: $username, Password: player123";
-            
-        } catch (Exception $e) {
-            $error = 'Failed to register player. Please try again.';
+        }
+        
+        if (empty($error)) {
+            try {
+                // Create user account for player
+                $username = strtolower($first_name . '.' . $last_name . '.' . time());
+                $password_hash = password_hash('player123', PASSWORD_DEFAULT); // Default password
+                
+                $db->query("
+                    INSERT INTO users (username, email, password_hash, role, first_name, last_name, phone, id_number) 
+                    VALUES (?, ?, ?, 'player', ?, ?, ?, ?)
+                ", [$username, $email, $password_hash, $first_name, $last_name, $phone, $id_number]);
+                
+                $user_id = $db->lastInsertId();
+                
+                // Create player profile
+                $db->query("
+                    INSERT INTO players (user_id, team_id, position, jersey_number, height_cm, weight_kg, date_of_birth, preferred_foot, player_image) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ", [$user_id, $team_id, $position, $jersey_number, $height_cm, $weight_kg, $date_of_birth, $preferred_foot, $player_image]);
+                
+                $player_id = $db->lastInsertId();
+                
+                // Create player registration
+                if ($team_id > 0) {
+                    $db->query("
+                        INSERT INTO player_registrations (player_id, team_id, season_year, registration_date) 
+                        VALUES (?, ?, ?, CURDATE())
+                    ", [$player_id, $team_id, date('Y')]);
+                }
+                
+                log_activity($user['id'], 'player_registration', "Registered player: $first_name $last_name");
+                $success = "Player '$first_name $last_name' registered successfully! Username: $username, Password: player123";
+                
+            } catch (Exception $e) {
+                // Delete uploaded image if database insert failed
+                if ($player_image) {
+                    delete_image($player_image);
+                }
+                $error = 'Failed to register player. Please try again.';
+            }
         }
     }
 }
@@ -144,7 +162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     <?php endif; ?>
                     
-                    <form method="POST" action="">
+                    <form method="POST" action="" enctype="multipart/form-data">
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
@@ -286,11 +304,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </div>
                         </div>
                         
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="player_image" class="form-label">
+                                        <i class="fas fa-camera me-2"></i>Player Photo
+                                    </label>
+                                    <input type="file" class="form-control" id="player_image" name="player_image" 
+                                           accept="image/*" onchange="previewImage(this, 'player-preview')">
+                                    <small class="form-text text-muted">Upload player photo (JPG, PNG, GIF, max 5MB)</small>
+                                    <div id="player-preview" class="mt-2" style="display: none;">
+                                        <img src="" alt="Player Preview" class="img-thumbnail" style="max-width: 150px; max-height: 200px;">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-register">
                                 <i class="fas fa-save me-2"></i>Register Player
                             </button>
-                            <a href="dashboard.php" class="btn btn-outline-secondary">
+                            <a href="../admin/dashboard.php" class="btn btn-outline-secondary">
                                 <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
                             </a>
                         </div>
@@ -301,5 +335,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function previewImage(input, previewId) {
+            const preview = document.getElementById(previewId);
+            const img = preview.querySelector('img');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    img.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html> 

@@ -1,5 +1,4 @@
 <?php
-die('TEST_CONNECTION.PHP IS RUNNING');
 echo '<pre>__FILE__: ' . __FILE__ . '</pre>';
 echo '<pre>CONFIG PATH: ' . realpath(__DIR__ . '/config/database.php') . '</pre>';
 require_once 'config/database.php';
@@ -11,7 +10,7 @@ try {
     echo "<p style='color: green;'>✅ Database connection successful!</p>";
 
     // Test query
-    $result = $db->fetch("SELECT COUNT(*) as count FROM users");
+    $result = $db->fetchRow("SELECT COUNT(*) as count FROM users");
     echo "<p>Total users in database: " . $result['count'] . "</p>";
 
     // Test counties

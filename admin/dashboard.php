@@ -195,6 +195,38 @@ $teams_by_sub_county = $db->fetchAll("
                         </div>
                     </div>
                     
+                    <!-- Quick Actions -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">
+                                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <a href="../teams/register.php" class="btn btn-primary btn-lg w-100 mb-2" onclick="console.log('Dashboard Add New Team clicked')">
+                                                <i class="fas fa-plus me-2"></i>Add New Team
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <a href="../players/register.php" class="btn btn-success btn-lg w-100 mb-2" onclick="console.log('Dashboard Add New Player clicked')">
+                                                <i class="fas fa-plus me-2"></i>Add New Player
+                                            </a>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <a href="../coaches/register.php" class="btn btn-warning btn-lg w-100 mb-2" onclick="console.log('Dashboard Add New Coach clicked')">
+                                                <i class="fas fa-plus me-2"></i>Add New Coach
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Charts Row -->
                     <div class="row mb-4">
                         <div class="col-md-8">
@@ -240,7 +272,22 @@ $teams_by_sub_county = $db->fetchAll("
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // Debug script to ensure links are working
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard page loaded');
+            
+            // Add click event listeners to all buttons
+            const buttons = document.querySelectorAll('.btn');
+            buttons.forEach(function(button) {
+                button.addEventListener('click', function(e) {
+                    console.log('Button clicked:', this.textContent.trim());
+                    console.log('Button href:', this.href);
+                });
+            });
+        });
+        
         // Teams by Sub-County Chart
         const ctx = document.getElementById('teamsChart').getContext('2d');
         new Chart(ctx, {
