@@ -23,16 +23,16 @@ $teams = $db->fetchAll("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teams Management - <?php echo APP_NAME; ?></title>
+    <title>Teams Management - Governor Wavinya Cup</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         .sidebar {
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0d47a1, #b71c1c);
         }
         .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.85);
             padding: 12px 20px;
             border-radius: 8px;
             margin: 2px 0;
@@ -63,9 +63,8 @@ $teams = $db->fetchAll("
             <div class="col-md-3 col-lg-2 px-0">
                 <div class="sidebar p-3">
                     <div class="text-center mb-4">
-                        <h4 class="text-white">
-                            <i class="fas fa-futbol me-2"></i>Machakos Teams
-                        </h4>
+                        <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
+                        <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
                         <small class="text-white-50">Admin Dashboard</small>
                     </div>
                     
@@ -130,8 +129,8 @@ $teams = $db->fetchAll("
                                 </div>
                             <?php else: ?>
                                 <div class="table-responsive">
-                                    <table class="table table-hover">
-                                        <thead>
+                                    <table class="table table-hover align-middle">
+                                        <thead class="table-light">
                                             <tr>
                                                 <th>Team Name</th>
                                                 <th>Ward</th>
@@ -158,13 +157,13 @@ $teams = $db->fetchAll("
                                                     </td>
                                                     <td><?php echo format_date($team['created_at']); ?></td>
                                                     <td>
-                                                        <button class="btn btn-sm btn-outline-primary">
+                                                        <button class="btn btn-sm btn-outline-primary" title="View">
                                                             <i class="fas fa-eye"></i>
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-warning">
+                                                        <button class="btn btn-sm btn-outline-warning" title="Edit">
                                                             <i class="fas fa-edit"></i>
                                                         </button>
-                                                        <button class="btn btn-sm btn-outline-danger">
+                                                        <button class="btn btn-sm btn-outline-danger" title="Delete">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </td>
@@ -183,11 +182,8 @@ $teams = $db->fetchAll("
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Debug script to ensure links are working
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Teams page loaded');
-            
-            // Add click event listeners to all buttons
             const buttons = document.querySelectorAll('.btn');
             buttons.forEach(function(button) {
                 button.addEventListener('click', function(e) {
@@ -198,4 +194,4 @@ $teams = $db->fetchAll("
         });
     </script>
 </body>
-</html> 
+</html>

@@ -41,17 +41,17 @@ $teams_by_sub_county = $db->fetchAll("
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - <?php echo APP_NAME; ?></title>
+    <title>Admin Dashboard - Governor Wavinya Cup</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .sidebar {
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0d47a1, #b71c1c); /* Updated gradient */
         }
         .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8);
+            color: rgba(255, 255, 255, 0.85);
             padding: 12px 20px;
             border-radius: 8px;
             margin: 2px 0;
@@ -72,10 +72,10 @@ $teams_by_sub_county = $db->fetchAll("
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
             border-left: 4px solid;
         }
-        .stat-card.primary { border-left-color: #667eea; }
+        .stat-card.primary { border-left-color: #0d47a1; }
         .stat-card.success { border-left-color: #28a745; }
         .stat-card.warning { border-left-color: #ffc107; }
-        .stat-card.info { border-left-color: #17a2b8; }
+        .stat-card.info { border-left-color: #b71c1c; }
         .stat-icon {
             font-size: 2.5rem;
             opacity: 0.7;
@@ -89,9 +89,8 @@ $teams_by_sub_county = $db->fetchAll("
             <div class="col-md-3 col-lg-2 px-0">
                 <div class="sidebar p-3">
                     <div class="text-center mb-4">
-                        <h4 class="text-white">
-                            <i class="fas fa-futbol me-2"></i>Machakos Teams
-                        </h4>
+                        <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
+                        <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
                         <small class="text-white-50">Admin Dashboard</small>
                     </div>
                     
@@ -187,7 +186,7 @@ $teams_by_sub_county = $db->fetchAll("
                                         <h3 class="mb-0"><?php echo $pending_registrations; ?></h3>
                                         <p class="text-muted mb-0">Pending Approvals</p>
                                     </div>
-                                    <div class="stat-icon text-info">
+                                    <div class="stat-icon text-danger">
                                         <i class="fas fa-clock"></i>
                                     </div>
                                 </div>
@@ -207,17 +206,17 @@ $teams_by_sub_county = $db->fetchAll("
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4">
-                                            <a href="../teams/register.php" class="btn btn-primary btn-lg w-100 mb-2" onclick="console.log('Dashboard Add New Team clicked')">
+                                            <a href="../teams/register.php" class="btn btn-primary btn-lg w-100 mb-2">
                                                 <i class="fas fa-plus me-2"></i>Add New Team
                                             </a>
                                         </div>
                                         <div class="col-md-4">
-                                            <a href="../players/register.php" class="btn btn-success btn-lg w-100 mb-2" onclick="console.log('Dashboard Add New Player clicked')">
+                                            <a href="../players/register.php" class="btn btn-success btn-lg w-100 mb-2">
                                                 <i class="fas fa-plus me-2"></i>Add New Player
                                             </a>
                                         </div>
                                         <div class="col-md-4">
-                                            <a href="../coaches/register.php" class="btn btn-warning btn-lg w-100 mb-2" onclick="console.log('Dashboard Add New Coach clicked')">
+                                            <a href="../coaches/register.php" class="btn btn-warning btn-lg w-100 mb-2">
                                                 <i class="fas fa-plus me-2"></i>Add New Coach
                                             </a>
                                         </div>
@@ -274,21 +273,6 @@ $teams_by_sub_county = $db->fetchAll("
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Debug script to ensure links are working
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Dashboard page loaded');
-            
-            // Add click event listeners to all buttons
-            const buttons = document.querySelectorAll('.btn');
-            buttons.forEach(function(button) {
-                button.addEventListener('click', function(e) {
-                    console.log('Button clicked:', this.textContent.trim());
-                    console.log('Button href:', this.href);
-                });
-            });
-        });
-        
-        // Teams by Sub-County Chart
         const ctx = document.getElementById('teamsChart').getContext('2d');
         new Chart(ctx, {
             type: 'bar',
@@ -297,8 +281,8 @@ $teams_by_sub_county = $db->fetchAll("
                 datasets: [{
                     label: 'Number of Teams',
                     data: <?php echo json_encode(array_column($teams_by_sub_county, 'team_count')); ?>,
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: 'rgba(102, 126, 234, 1)',
+                    backgroundColor: 'rgba(13, 71, 161, 0.8)',
+                    borderColor: 'rgba(13, 71, 161, 1)',
                     borderWidth: 1
                 }]
             },
@@ -317,4 +301,4 @@ $teams_by_sub_county = $db->fetchAll("
         });
     </script>
 </body>
-</html> 
+</html>
