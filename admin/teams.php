@@ -1,8 +1,12 @@
 <?php
-require_once '../config/config.php';
+// Include all necessary configuration and helper files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
 
-// Check if user has admin permissions
-if (!is_logged_in() || !has_permission('manage_teams')) {
+// Check if user is logged in and has admin permissions
+if (!is_logged_in() || !has_role('admin')) {
     redirect('../auth/login.php');
 }
 
@@ -59,7 +63,6 @@ $teams = $db->fetchAll("
 <body>
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
             <div class="col-md-3 col-lg-2 px-0">
                 <div class="sidebar p-3">
                     <div class="text-center mb-4">
@@ -98,10 +101,8 @@ $teams = $db->fetchAll("
                 </div>
             </div>
             
-            <!-- Main Content -->
             <div class="col-md-9 col-lg-10">
                 <div class="main-content p-4">
-                    <!-- Header -->
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
                             <h2><i class="fas fa-users me-2"></i>Teams Management</h2>
@@ -112,7 +113,6 @@ $teams = $db->fetchAll("
                         </a>
                     </div>
                     
-                    <!-- Teams Table -->
                     <div class="card">
                         <div class="card-header">
                             <h5 class="card-title mb-0">All Teams</h5>

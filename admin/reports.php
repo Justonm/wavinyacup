@@ -1,21 +1,86 @@
 <?php
-require_once '../config/config.php';
+// Include all necessary configuration and helper files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
 
 // Check if user has admin permissions
-if (!has_permission('all')) {
+if (!is_logged_in() || !has_role('admin')) {
     redirect('../auth/login.php');
 }
 
 $user = get_logged_in_user();
 $db = db();
 
-// Get statistics
+// Handle report generation
+if (isset($_GET['report_type'])) {
+    $report_type = sanitize_input($_GET['report_type']);
+    $format = sanitize_input($_GET['format'] ?? 'excel'); // Default to Excel for downloads
+
+    // Fetch comprehensive data for the report
+    $report_data = $db->fetchAll("
+        SELECT 
+            t.name AS team_name,
+            t.status AS team_status,
+            sc.name AS sub_county_name,
+            w.name AS ward_name,
+            COUNT(p.id) AS player_count,
+            CONCAT(u.first_name, ' ', u.last_name) AS coach_name
+        FROM teams t
+        LEFT JOIN wards w ON t.ward_id = w.id
+        LEFT JOIN sub_counties sc ON t.sub_county_id = sc.id
+        LEFT JOIN players p ON p.team_id = t.id
+        LEFT JOIN users u ON u.team_id = t.id AND u.role = 'coach'
+        GROUP BY t.id
+        ORDER BY sub_county_name, team_name
+    ");
+
+    // Start report generation based on format
+    if ($format === 'pdf') {
+        // For a proper PDF, you need a library like FPDF or TCPDF.
+        // This is a simple placeholder to inform the user.
+        header('Content-Type: text/plain');
+        header('Content-Disposition: attachment; filename="report_info.txt"');
+        echo "To generate a proper PDF report, you must first install a PHP PDF library (e.g., FPDF or TCPDF) and write the code to render the report data into a PDF format.";
+        exit;
+    }
+
+    if ($format === 'excel') {
+        // Set headers for a proper CSV file that Excel can open
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="teams_report_' . date('Ymd_His') . '.csv"');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $output = fopen('php://output', 'w');
+
+        // Output the header row
+        fputcsv($output, ['Team Name', 'Sub-County', 'Ward', 'Player Count', 'Coach Name', 'Status']);
+        
+        // Output the data rows
+        foreach ($report_data as $row) {
+            fputcsv($output, [
+                $row['team_name'],
+                $row['sub_county_name'],
+                $row['ward_name'],
+                $row['player_count'],
+                $row['coach_name'],
+                $row['team_status']
+            ]);
+        }
+        fclose($output);
+        exit; // Important: Stop the script after sending the file
+    }
+}
+
+// Get statistics for the dashboard view
 $total_teams = $db->fetchRow("SELECT COUNT(*) as count FROM teams WHERE status = 'active'")['count'] ?? 0;
 $total_players = $db->fetchRow("SELECT COUNT(*) as count FROM players WHERE is_active = 1")['count'] ?? 0;
-$total_coaches = $db->fetchRow("SELECT COUNT(*) as count FROM coaches")['count'] ?? 0;
+$total_coaches = $db->fetchRow("SELECT COUNT(*) as count FROM users WHERE role = 'coach' AND is_active = 1")['count'] ?? 0;
 $pending_registrations = $db->fetchRow("SELECT COUNT(*) as count FROM team_registrations WHERE status = 'pending'")['count'] ?? 0;
 
-// Get teams by sub-county
+// Get teams by sub-county for the chart
 $teams_by_sub_county = $db->fetchAll("
     SELECT sc.name as sub_county, COUNT(t.id) as team_count 
     FROM sub_counties sc 
@@ -59,10 +124,9 @@ $teams_by_sub_county = $db->fetchAll("
 <body>
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
-            <div class="text-center mb-4">
+                <div class="text-center mb-4">
                     <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
                     <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
                     <small class="text-white-50">Admin Dashboard</small>
@@ -98,21 +162,18 @@ $teams_by_sub_county = $db->fetchAll("
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
             <div class="main-content p-4">
-                <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2><i class="fas fa-chart-bar me-2"></i>Reports & Analytics</h2>
                         <p class="text-muted">View system statistics and generate reports</p>
                     </div>
-                    <button class="btn btn-primary">
-                        <i class="fas fa-download me-2"></i>Export Report
-                    </button>
+                    <a href="?report_type=teams&format=excel" class="btn btn-primary">
+                        <i class="fas fa-download me-2"></i>Export Full Report
+                    </a>
                 </div>
 
-                <!-- Statistics Cards -->
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="card bg-primary text-white">
@@ -176,7 +237,6 @@ $teams_by_sub_county = $db->fetchAll("
                     </div>
                 </div>
 
-                <!-- Charts -->
                 <div class="row">
                     <div class="col-md-8">
                         <div class="card">
@@ -199,18 +259,18 @@ $teams_by_sub_county = $db->fetchAll("
                             </div>
                             <div class="card-body">
                                 <div class="d-grid gap-2">
-                                    <button class="btn btn-outline-primary">
+                                    <a href="?report_type=teams&format=pdf" class="btn btn-outline-primary">
                                         <i class="fas fa-file-pdf me-2"></i>Generate PDF Report
-                                    </button>
-                                    <button class="btn btn-outline-success">
+                                    </a>
+                                    <a href="?report_type=teams&format=excel" class="btn btn-outline-success">
                                         <i class="fas fa-file-excel me-2"></i>Export to Excel
-                                    </button>
-                                    <button class="btn btn-outline-info">
+                                    </a>
+                                    <a href="?report_type=analytics&format=json" class="btn btn-outline-info">
                                         <i class="fas fa-chart-pie me-2"></i>Detailed Analytics
-                                    </button>
-                                    <button class="btn btn-outline-warning">
+                                    </a>
+                                    <a href="?report_type=monthly&format=excel" class="btn btn-outline-warning">
                                         <i class="fas fa-calendar me-2"></i>Monthly Report
-                                    </button>
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -218,7 +278,6 @@ $teams_by_sub_county = $db->fetchAll("
                 </div>
             </div>
         </div>
-
     </div>
 </div>
 

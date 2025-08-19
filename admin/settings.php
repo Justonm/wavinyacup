@@ -1,13 +1,128 @@
 <?php
-require_once '../config/config.php';
+// Include all necessary configuration and helper files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
 
 // Check if user has admin permissions
-if (!has_permission('all')) {
+if (!is_logged_in() || !has_role('admin')) {
     redirect('../auth/login.php');
 }
 
 $user = get_logged_in_user();
 $db = db();
+$message = '';
+$error = '';
+
+// Handle form submissions
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = sanitize_input($_POST['action'] ?? '');
+
+    if ($action === 'general_settings') {
+        // In a real application, you would update the database or a settings file here.
+        // For this example, we'll just show a success message.
+        $app_name = sanitize_input($_POST['app_name']);
+        $app_url = sanitize_input($_POST['app_url']);
+        $app_email = sanitize_input($_POST['app_email']);
+        $app_timezone = sanitize_input($_POST['app_timezone']);
+        $message = 'General settings saved successfully!';
+        // Example: file_put_contents('../config/settings.json', json_encode($_POST));
+    } elseif ($action === 'email_settings') {
+        $smtp_host = sanitize_input($_POST['smtp_host']);
+        $smtp_port = sanitize_input($_POST['smtp_port']);
+        $smtp_username = sanitize_input($_POST['smtp_username']);
+        $smtp_password = sanitize_input($_POST['smtp_password']);
+        $message = 'Email settings saved successfully!';
+    } elseif ($action === 'security_settings') {
+        $debug_mode = isset($_POST['debug_mode']) ? 1 : 0;
+        $maintenance_mode = isset($_POST['maintenance_mode']) ? 1 : 0;
+        $session_timeout = sanitize_input($_POST['session_timeout']);
+        $message = 'Security settings saved successfully!';
+    } elseif ($action === 'restore_backup' && !empty($_FILES['backup_file']['tmp_name'])) {
+        if ($_FILES['backup_file']['error'] === UPLOAD_ERR_OK) {
+            $uploaded_file = $_FILES['backup_file']['tmp_name'];
+            restoreDatabase($uploaded_file);
+        } else {
+            $error = "File upload failed. Error code: " . $_FILES['backup_file']['error'];
+        }
+    }
+}
+
+// Handle backup and restore actions
+if (isset($_GET['action'])) {
+    $action = sanitize_input($_GET['action']);
+
+    if ($action === 'create_backup') {
+        backupDatabase();
+        exit;
+    }
+}
+
+function backupDatabase() {
+    $db = db();
+    $tables = $db->fetchAll("SHOW TABLES");
+    $backup_content = '';
+
+    foreach ($tables as $table) {
+        $table_name = array_values($table)[0];
+        $create_table = $db->fetchRow("SHOW CREATE TABLE `{$table_name}`")['Create Table'];
+        $backup_content .= "DROP TABLE IF EXISTS `{$table_name}`;\n";
+        $backup_content .= $create_table . ";\n\n";
+
+        $rows = $db->fetchAll("SELECT * FROM `{$table_name}`");
+        foreach ($rows as $row) {
+            $row_data = array_map(function($value) use ($db) {
+                return $db->quote($value);
+            }, array_values($row));
+            $backup_content .= "INSERT INTO `{$table_name}` VALUES (" . implode(',', $row_data) . ");\n";
+        }
+        $backup_content .= "\n";
+    }
+
+    $backupFile = 'backup_' . date('Ymd_His') . '.sql';
+    header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="' . $backupFile . '"');
+    echo $backup_content;
+    exit;
+}
+
+function restoreDatabase($file) {
+    global $db, $message, $error;
+    $sql_content = file_get_contents($file);
+    if ($sql_content === false) {
+        $error = "Failed to read the uploaded file.";
+        return;
+    }
+
+    // A very simple SQL parser - not robust for all cases
+    $queries = explode(";\n", $sql_content);
+    foreach ($queries as $query) {
+        $query = trim($query);
+        if ($query !== '') {
+            try {
+                $db->exec($query);
+            } catch (Exception $e) {
+                $error = "Error restoring database: " . $e->getMessage();
+                return;
+            }
+        }
+    }
+    $message = "Database restored successfully!";
+}
+
+// Fetch current values (placeholders for now)
+$app_name = defined('APP_NAME') ? APP_NAME : 'Governor Wavinya Cup';
+$app_url = defined('APP_URL') ? APP_URL : '';
+$app_email = defined('APP_EMAIL') ? APP_EMAIL : '';
+$app_timezone = defined('APP_TIMEZONE') ? APP_TIMEZONE : 'Africa/Nairobi';
+$smtp_host = defined('SMTP_HOST') ? SMTP_HOST : '';
+$smtp_port = defined('SMTP_PORT') ? SMTP_PORT : '';
+$smtp_username = defined('SMTP_USERNAME') ? SMTP_USERNAME : '';
+$smtp_password = defined('SMTP_PASSWORD') ? SMTP_PASSWORD : '';
+$debug_mode = defined('DEBUG_MODE') ? DEBUG_MODE : false;
+$maintenance_mode = defined('MAINTENANCE_MODE') ? MAINTENANCE_MODE : false;
+$session_timeout = defined('SESSION_TIMEOUT') ? SESSION_TIMEOUT : 60;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -47,14 +162,13 @@ $db = db();
 <body>
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
-            <div class="text-center mb-4">
-                        <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                        <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
-                        <small class="text-white-50">Admin Dashboard</small>
-                    </div>
+                <div class="text-center mb-4">
+                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
+                    <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
+                    <small class="text-white-50">Admin Dashboard</small>
+                </div>
 
                 <nav class="nav flex-column">
                     <a class="nav-link" href="dashboard.php"><i class="fas fa-tachometer-alt me-2"></i>Dashboard</a>
@@ -70,7 +184,6 @@ $db = db();
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
             <div class="main-content p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
@@ -79,6 +192,20 @@ $db = db();
                         <p class="text-muted">Configure system preferences and manage users</p>
                     </div>
                 </div>
+
+                <?php if ($message): ?>
+                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                        <?php echo $message; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($error): ?>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <?php echo $error; ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                <?php endif; ?>
 
                 <div class="row">
                     <div class="col-md-3">
@@ -103,31 +230,31 @@ $db = db();
 
                     <div class="col-md-9">
                         <div class="tab-content">
-                            <!-- General Settings -->
                             <div class="tab-pane fade show active" id="general">
                                 <div class="card">
                                     <div class="card-header">
                                         <h5 class="card-title mb-0">General Settings</h5>
                                     </div>
                                     <div class="card-body">
-                                        <form>
+                                        <form method="POST" action="settings.php">
+                                            <input type="hidden" name="action" value="general_settings">
                                             <div class="mb-3">
                                                 <label class="form-label">Application Name</label>
-                                                <input type="text" class="form-control" value="<?php echo APP_NAME; ?>">
+                                                <input type="text" name="app_name" class="form-control" value="<?php echo $app_name; ?>">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">Application URL</label>
-                                                <input type="url" class="form-control" value="<?php echo APP_URL; ?>">
+                                                <input type="url" name="app_url" class="form-control" value="<?php echo $app_url; ?>">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">Contact Email</label>
-                                                <input type="email" class="form-control" value="<?php echo APP_EMAIL; ?>">
+                                                <input type="email" name="app_email" class="form-control" value="<?php echo $app_email; ?>">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">Timezone</label>
-                                                <select class="form-select">
-                                                    <option value="Africa/Nairobi" selected>Africa/Nairobi</option>
-                                                    <option value="UTC">UTC</option>
+                                                <select name="app_timezone" class="form-select">
+                                                    <option value="Africa/Nairobi" <?php echo ($app_timezone === 'Africa/Nairobi') ? 'selected' : ''; ?>>Africa/Nairobi</option>
+                                                    <option value="UTC" <?php echo ($app_timezone === 'UTC') ? 'selected' : ''; ?>>UTC</option>
                                                 </select>
                                             </div>
                                             <button type="submit" class="btn btn-primary">Save Changes</button>
@@ -136,7 +263,6 @@ $db = db();
                                 </div>
                             </div>
 
-                            <!-- User Management -->
                             <div class="tab-pane fade" id="users">
                                 <div class="card">
                                     <div class="card-header">
@@ -146,36 +272,36 @@ $db = db();
                                         <i class="fas fa-users fa-3x text-muted mb-3"></i>
                                         <h5>User Management</h5>
                                         <p class="text-muted">Manage system users and permissions</p>
-                                        <button class="btn btn-primary">
+                                        <a href="users.php" class="btn btn-primary">
                                             <i class="fas fa-plus me-2"></i>Add New User
-                                        </button>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Email Settings -->
                             <div class="tab-pane fade" id="email">
                                 <div class="card">
                                     <div class="card-header">
                                         <h5 class="card-title mb-0">Email Configuration</h5>
                                     </div>
                                     <div class="card-body">
-                                        <form>
+                                        <form method="POST" action="settings.php">
+                                            <input type="hidden" name="action" value="email_settings">
                                             <div class="mb-3">
                                                 <label class="form-label">SMTP Host</label>
-                                                <input type="text" class="form-control" value="<?php echo SMTP_HOST; ?>">
+                                                <input type="text" name="smtp_host" class="form-control" value="<?php echo $smtp_host; ?>">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">SMTP Port</label>
-                                                <input type="number" class="form-control" value="<?php echo SMTP_PORT; ?>">
+                                                <input type="number" name="smtp_port" class="form-control" value="<?php echo $smtp_port; ?>">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">SMTP Username</label>
-                                                <input type="text" class="form-control" value="<?php echo SMTP_USERNAME; ?>">
+                                                <input type="text" name="smtp_username" class="form-control" value="<?php echo $smtp_username; ?>">
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">SMTP Password</label>
-                                                <input type="password" class="form-control" value="<?php echo SMTP_PASSWORD; ?>">
+                                                <input type="password" name="smtp_password" class="form-control" value="<?php echo $smtp_password; ?>">
                                             </div>
                                             <button type="submit" class="btn btn-primary">Save Email Settings</button>
                                         </form>
@@ -183,7 +309,6 @@ $db = db();
                                 </div>
                             </div>
 
-                            <!-- Backup & Restore -->
                             <div class="tab-pane fade" id="backup">
                                 <div class="card">
                                     <div class="card-header">
@@ -197,7 +322,7 @@ $db = db();
                                                         <i class="fas fa-download fa-2x mb-3"></i>
                                                         <h5>Create Backup</h5>
                                                         <p>Generate a complete backup of the system</p>
-                                                        <button class="btn btn-light">Create Backup</button>
+                                                        <a href="?action=create_backup" class="btn btn-light">Create Backup</a>
                                                     </div>
                                                 </div>
                                             </div>
@@ -207,7 +332,11 @@ $db = db();
                                                         <i class="fas fa-upload fa-2x mb-3"></i>
                                                         <h5>Restore Backup</h5>
                                                         <p>Restore system from a backup file</p>
-                                                        <button class="btn btn-light">Restore Backup</button>
+                                                        <form method="POST" action="settings.php" enctype="multipart/form-data">
+                                                            <input type="hidden" name="action" value="restore_backup">
+                                                            <input type="file" name="backup_file" class="form-control mb-2" required>
+                                                            <button type="submit" class="btn btn-light">Restore Backup</button>
+                                                        </form>
                                                     </div>
                                                 </div>
                                             </div>
@@ -216,25 +345,25 @@ $db = db();
                                 </div>
                             </div>
 
-                            <!-- Security -->
                             <div class="tab-pane fade" id="security">
                                 <div class="card">
                                     <div class="card-header">
                                         <h5 class="card-title mb-0">Security Settings</h5>
                                     </div>
                                     <div class="card-body">
-                                        <form>
+                                        <form method="POST" action="settings.php">
+                                            <input type="hidden" name="action" value="security_settings">
                                             <div class="form-check form-switch mb-3">
-                                                <input class="form-check-input" type="checkbox" id="debugMode">
+                                                <input class="form-check-input" type="checkbox" name="debug_mode" id="debugMode" <?php echo ($debug_mode) ? 'checked' : ''; ?>>
                                                 <label class="form-check-label" for="debugMode">Debug Mode</label>
                                             </div>
                                             <div class="form-check form-switch mb-3">
-                                                <input class="form-check-input" type="checkbox" id="maintenanceMode">
+                                                <input class="form-check-input" type="checkbox" name="maintenance_mode" id="maintenanceMode" <?php echo ($maintenance_mode) ? 'checked' : ''; ?>>
                                                 <label class="form-check-label" for="maintenanceMode">Maintenance Mode</label>
                                             </div>
                                             <div class="mb-3">
                                                 <label class="form-label">Session Timeout (minutes)</label>
-                                                <input type="number" class="form-control" value="60">
+                                                <input type="number" name="session_timeout" class="form-control" value="<?php echo $session_timeout; ?>">
                                             </div>
                                             <button type="submit" class="btn btn-primary">Save Security Settings</button>
                                         </form>

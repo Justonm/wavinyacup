@@ -11,12 +11,12 @@ $db = db();
 
 // Get coach profile with team information
 $coach = $db->fetchRow("
-    SELECT c.*, t.name as team_name, t.team_logo, t.team_photo, w.name as ward_name, sc.name as sub_county_name
+    SELECT c.*, t.name as team_name, t.id as team_id, t.team_code, w.name as ward_name, sc.name as sub_county_name
     FROM coaches c
     LEFT JOIN teams t ON c.team_id = t.id
-    LEFT JOIN wards w ON c.ward_id = w.id
+    LEFT JOIN wards w ON t.ward_id = w.id
     LEFT JOIN sub_counties sc ON w.sub_county_id = sc.id
-    WHERE c.user_id = ? AND c.is_active = 1
+    WHERE c.user_id = ?
 ", [$user['id']]);
 
 // Get team players
@@ -150,6 +150,11 @@ $team_stats = $db->fetchRow("
                             <p class="text-muted mb-0">Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
                         </div>
                         <div class="d-flex gap-2">
+                            <?php if ($coach && $coach['team_id']): ?>
+                                <a href="manage_team.php" class="btn btn-custom">
+                                    <i class="fas fa-users me-2"></i>Manage Team
+                                </a>
+                            <?php endif; ?>
                             <a href="../auth/logout.php" class="btn btn-outline-danger">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>

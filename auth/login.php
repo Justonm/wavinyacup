@@ -1,7 +1,16 @@
-<?php 
-require_once '../config/config.php'; // This should include db(), helper functions, constants
+<?php
+/**
+ * User Login Page
+ * * Handles user authentication, session management, and redirection based on user roles.
+ */
 
-// Redirect if already logged in
+// Include necessary files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
+
+// Redirect if the user is already logged in
 if (is_logged_in()) {
     redirect('../index.php');
 }
@@ -16,25 +25,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please enter both email and password.';
     } else {
         try {
-            $stmt = db()->getConnection()->prepare("SELECT * FROM users WHERE email = ? AND is_active = 1 LIMIT 1");
-            $stmt->execute([$email]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            // Find the user by email
+            $user = db()->fetchRow("SELECT * FROM users WHERE email = ? AND is_active = 1 LIMIT 1", [$email]);
 
             if ($user && password_verify($password, $user['password_hash'])) {
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['role'] = $user['role'];
+                // Check if the user's account is approved (only for coaches)
+                if ($user['role'] === 'coach' && isset($user['approval_status']) && $user['approval_status'] !== 'approved') {
+                    if ($user['approval_status'] === 'pending') {
+                        $error = 'Your coach registration is pending admin approval. You will receive an email once approved.';
+                    } elseif ($user['approval_status'] === 'rejected') {
+                        $error = 'Your coach registration was rejected. Please contact the administrator for more information.';
+                    } else {
+                        $error = 'Your account is not approved. Please contact the administrator.';
+                    }
+                } else {
+                    // Password and approval status are correct, create the session
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['user_role'] = $user['role']; // Use 'user_role' to be consistent
 
-                log_activity($user['id'], 'login', 'User logged in successfully');
-                redirect('../index.php');
+                    // Log the successful login attempt
+                    log_activity($user['id'], 'login', 'User logged in successfully');
+                    
+                    // Update last login time
+                    db()->query("UPDATE users SET last_login = NOW() WHERE id = ?", [$user['id']]);
+
+                    // Redirect based on the user's role
+                    switch ($user['role']) {
+                        case 'admin':
+                        case 'county_admin':
+                        case 'sub_county_admin':
+                        case 'ward_admin':
+                            redirect('../admin/dashboard.php');
+                            break;
+                        case 'coach':
+                            redirect('../coach/dashboard.php');
+                            break;
+                        case 'captain':
+                            redirect('../captain/dashboard.php');
+                            break;
+                        case 'player':
+                            redirect('../player/dashboard.php');
+                            break;
+                        default:
+                            redirect('../index.php');
+                            break;
+                    }
+                }
             } else {
-                $error = 'Invalid username or password.';
+                $error = 'Invalid email or password.';
+                // Log failed login attempt
+                // Note: It's better to log with an IP address if the user doesn't exist
+                log_activity(null, 'failed_login', 'Invalid credentials for email: ' . $email);
             }
         } catch (PDOException $e) {
             $error = 'Database error. Please contact administrator.';
-            if (DEBUG_MODE) {
-                $error .= "<br><small>" . $e->getMessage() . "</small>";
-            }
+            // Log the detailed database error
+            error_log("Login error: " . $e->getMessage());
         }
     }
 }
@@ -112,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="login-body">
             <?php if (!empty($error)): ?>
                 <div class="alert alert-danger" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i><?= $error ?>
+                    <i class="fas fa-exclamation-triangle me-2"></i><?= htmlspecialchars($error) ?>
                 </div>
             <?php endif; ?>
 
@@ -138,10 +185,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </form>
             
             <div class="text-center mt-4">
-                <small class="text-muted">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Contact the system administrator for login access.
-                </small>
+                <p class="text-muted mb-2">
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        Contact the system administrator for login access.
+                    </small>
+                </p>
+                <p class="mb-0">
+                    <a href="../coaches/self_register.php" class="text-decoration-none">
+                        <i class="fas fa-user-plus me-1"></i>Register as Coach
+                    </a>
+                </p>
             </div>
         </div>
     </div>

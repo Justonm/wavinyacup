@@ -263,7 +263,7 @@ INSERT INTO system_settings (setting_key, setting_value, description) VALUES
 ('site_name', 'Machakos County Team Registration System', 'Website name'),
 ('site_description', 'FIFA-style team registration system for Machakos County', 'Website description'),
 ('registration_enabled', 'true', 'Whether new registrations are enabled'),
-('max_players_per_team', '25', 'Maximum players allowed per team'),
+('max_players_per_team', '22', 'Maximum players allowed per team'),
 ('min_players_per_team', '11', 'Minimum players required per team'),
 ('season_year', '2024', 'Current season year'),
 ('contact_email', 'info@machakoscounty.go.ke', 'Contact email address'),

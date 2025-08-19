@@ -1,5 +1,10 @@
 <?php
+// coaches/register.php
+
+// Include necessary files. The helpers.php file contains functions like
+// is_logged_in(), has_permission(), and the new get_logged_in_user().
 require_once dirname(__DIR__) . '/config/config.php';
+require_once dirname(__DIR__) . '/includes/helpers.php'; // Corrected file inclusion
 require_once dirname(__DIR__) . '/includes/image_upload.php';
 
 // Check if user is logged in and has permission
@@ -7,7 +12,8 @@ if (!is_logged_in() || !has_permission('manage_coaches')) {
     redirect('../auth/login.php');
 }
 
-$user = get_current_user_data();
+// Use the correct function name to get user data from the database
+$user = get_logged_in_user();
 $db = db();
 $error = '';
 $success = '';
@@ -57,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Handle image upload
         $coach_image = null;
         if (isset($_FILES['coach_image']) && $_FILES['coach_image']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $upload_result = upload_image($_FILES['coach_image'], 'coach', 'photo');
+            $upload_result = upload_image($_FILES['coach_image'], 'coaches', 'photo');
             if (!$upload_result['success']) {
                 $error = 'Image upload failed: ' . $upload_result['error'];
             } else {
@@ -67,8 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if (empty($error)) {
             try {
-                // Create user account for coach
-                $username = strtolower($first_name . '.' . $last_name . '.' . time());
+                // Start a database transaction
+                $db->beginTransaction();
+
+                // 1. Create user account for coach
+                $username = strtolower(str_replace(' ', '', $first_name) . '.' . str_replace(' ', '', $last_name) . '.' . time());
                 $password_hash = password_hash('coach123', PASSWORD_DEFAULT); // Default password
                 
                 $db->query("
@@ -78,23 +87,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 $user_id = $db->lastInsertId();
                 
-                // Create coach profile
+                // 2. Create coach profile
                 $db->query("
                     INSERT INTO coaches (user_id, team_id, ward_id, license_number, license_type, experience_years, coach_image) 
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                ", [$user_id, $team_id, $ward_id, $license_number, $license_type, $experience_years, $coach_image]);
+                ", [$user_id, ($team_id > 0 ? $team_id : null), ($ward_id > 0 ? $ward_id : null), $license_number, $license_type, $experience_years, $coach_image]);
                 
                 $coach_id = $db->lastInsertId();
+                
+                // Commit the transaction if both queries were successful
+                $db->commit();
                 
                 log_activity($user['id'], 'coach_registration', "Registered coach: $first_name $last_name");
                 $success = "Coach '$first_name $last_name' registered successfully! Username: $username, Password: coach123";
                 
             } catch (Exception $e) {
+                // An error occurred, so rollback the transaction
+                $db->rollBack();
+                
                 // Delete uploaded image if database insert failed
                 if ($coach_image) {
                     delete_image($coach_image);
                 }
-                $error = 'Failed to register coach. Please try again.';
+                $error = 'Failed to register coach. Database error: ' . $e->getMessage();
             }
         }
     }
@@ -262,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <i class="fas fa-camera me-2"></i>Coach Photo
                                     </label>
                                     <input type="file" class="form-control" id="coach_image" name="coach_image" 
-                                           accept="image/*" onchange="previewImage(this, 'coach-preview')">
+                                            accept="image/*" onchange="previewImage(this, 'coach-preview')">
                                     <small class="form-text text-muted">Upload coach photo (JPG, PNG, GIF, max 5MB)</small>
                                     <div id="coach-preview" class="mt-2" style="display: none;">
                                         <img src="" alt="Coach Preview" class="img-thumbnail" style="max-width: 150px; max-height: 200px;">
@@ -304,4 +319,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     </script>
 </body>
-</html> 
+</html>

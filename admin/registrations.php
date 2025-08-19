@@ -1,20 +1,74 @@
 <?php
-require_once '../config/config.php';
+// Include all necessary configuration and helper files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
 
 // Check if user has admin permissions
-if (!has_permission('all')) {
+if (!is_logged_in() || !has_role('admin')) {
     redirect('../auth/login.php');
 }
 
 $user = get_logged_in_user();
 $db = db();
+$error = '';
+$success = '';
 
-// Get registrations with team information
+// Handle registration actions (approve/reject)
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $registration_id = (int)($_POST['registration_id'] ?? 0);
+    $action = sanitize_input($_POST['action'] ?? '');
+
+    if ($registration_id > 0 && ($action === 'approve' || $action === 'reject')) {
+        try {
+            $status = ($action === 'approve') ? 'approved' : 'rejected';
+            
+            $db->beginTransaction();
+
+            $db->query("UPDATE team_registrations SET status = ? WHERE id = ?", [$status, $registration_id]);
+
+            if ($status === 'approved') {
+                $registration = $db->fetch("SELECT * FROM team_registrations WHERE id = ?", [$registration_id]);
+
+                $db->query("
+                    INSERT INTO teams (name, description, team_logo, ward_id, sub_county_id, status)
+                    VALUES (?, ?, ?, ?, ?, 'active')
+                ", [
+                    $registration['team_name'],
+                    $registration['team_description'],
+                    $registration['team_logo'],
+                    $registration['ward_id'],
+                    $registration['sub_county_id']
+                ]);
+
+                $new_team_id = $db->lastInsertId();
+                $db->query("UPDATE team_registrations SET team_id = ? WHERE id = ?", [$new_team_id, $registration_id]);
+            }
+
+            $db->commit();
+            $success = "Registration has been " . $status . " successfully.";
+            log_activity($user['id'], 'registration_update', "{$action} registration ID: {$registration_id}");
+
+        } catch (Exception $e) {
+            $db->rollBack();
+            $error = "Failed to {$action} registration. Error: " . $e->getMessage();
+        }
+    } else {
+        $error = "Invalid action or registration ID.";
+    }
+}
+
+// Get registrations with team and ward information
 $registrations = $db->fetchAll("
-    SELECT tr.*, t.name as team_name, w.name as ward_name 
+    SELECT tr.*, 
+    COALESCE(tr.team_name, t.name) as team_name,
+    w.name as ward_name,
+    sc.name as sub_county_name
     FROM team_registrations tr 
     LEFT JOIN teams t ON tr.team_id = t.id 
     LEFT JOIN wards w ON tr.ward_id = w.id 
+    LEFT JOIN sub_counties sc ON tr.sub_county_id = sc.id
     ORDER BY tr.created_at DESC
 ");
 ?>
@@ -51,10 +105,9 @@ $registrations = $db->fetchAll("
 <body>
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
-            <div class="text-center mb-4">
+                <div class="text-center mb-4">
                     <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
                     <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
                     <small class="text-white-50">Admin Dashboard</small>
@@ -90,10 +143,8 @@ $registrations = $db->fetchAll("
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
             <div class="main-content p-4">
-                <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2><i class="fas fa-clipboard-list me-2"></i>Registrations Management</h2>
@@ -101,7 +152,14 @@ $registrations = $db->fetchAll("
                     </div>
                 </div>
 
-                <!-- Registrations Table -->
+                <?php if ($error): ?>
+                    <div class="alert alert-danger"><?php echo $error; ?></div>
+                <?php endif; ?>
+
+                <?php if ($success): ?>
+                    <div class="alert alert-success"><?php echo $success; ?></div>
+                <?php endif; ?>
+
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">All Registrations</h5>
@@ -133,23 +191,26 @@ $registrations = $db->fetchAll("
                                                 <td>
                                                     <span class="badge bg-<?php 
                                                         echo $reg['status'] === 'pending' ? 'warning' : 
-                                                             ($reg['status'] === 'approved' ? 'success' : 'danger'); 
+                                                            ($reg['status'] === 'approved' ? 'success' : 'danger'); 
                                                     ?>">
                                                         <?php echo ucfirst($reg['status']); ?>
                                                     </span>
                                                 </td>
                                                 <td><?php echo format_date($reg['created_at']); ?></td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-primary" title="View">
+                                                    <a href="view_registration.php?id=<?php echo $reg['id']; ?>" class="btn btn-sm btn-outline-primary" title="View">
                                                         <i class="fas fa-eye"></i>
-                                                    </button>
+                                                    </a>
                                                     <?php if ($reg['status'] === 'pending'): ?>
-                                                        <button class="btn btn-sm btn-outline-success" title="Approve">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                        <button class="btn btn-sm btn-outline-danger" title="Reject">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
+                                                        <form method="POST" class="d-inline">
+                                                            <input type="hidden" name="registration_id" value="<?php echo $reg['id']; ?>">
+                                                            <button type="submit" name="action" value="approve" class="btn btn-sm btn-outline-success" title="Approve">
+                                                                <i class="fas fa-check"></i>
+                                                            </button>
+                                                            <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline-danger" title="Reject">
+                                                                <i class="fas fa-times"></i>
+                                                            </button>
+                                                        </form>
                                                     <?php endif; ?>
                                                 </td>
                                             </tr>

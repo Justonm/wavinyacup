@@ -1,22 +1,42 @@
 <?php
-require_once '../config/config.php';
+// Include all necessary configuration and helper files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
 
 // Check if user has admin permissions
-if (!is_logged_in() || !has_permission('manage_coaches')) {
+if (!is_logged_in() || !has_role('admin')) {
     redirect('../auth/login.php');
 }
 
 $user = get_logged_in_user();
 $db = db();
 
-// Get coaches with team and ward information
-$coaches = $db->fetchAll("
-    SELECT c.*, t.name as team_name, w.name as ward_name 
-    FROM coaches c 
-    LEFT JOIN teams t ON c.team_id = t.id 
-    LEFT JOIN wards w ON c.ward_id = w.id 
-    ORDER BY c.created_at DESC
-");
+// Get coaches directly from the users table by filtering on the 'role' column
+$query = "
+    SELECT 
+        id, 
+        first_name, 
+        last_name, 
+        email, 
+        phone,
+        is_active
+    FROM users 
+    WHERE role = 'coach'
+    ORDER BY created_at DESC
+";
+
+// Execute the query and check for success
+$stmt = $db->query($query);
+
+// Check if the query was successful
+if ($stmt) {
+    $coaches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} else {
+    // If the query failed, initialize an empty array to prevent errors later
+    $coaches = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -59,7 +79,6 @@ $coaches = $db->fetchAll("
 <body>
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
                 <div class="text-center mb-4">
@@ -98,10 +117,8 @@ $coaches = $db->fetchAll("
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
             <div class="main-content p-4">
-                <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2><i class="fas fa-chalkboard-teacher me-2"></i>Coaches Management</h2>
@@ -112,7 +129,6 @@ $coaches = $db->fetchAll("
                     </a>
                 </div>
 
-                <!-- Coaches Table -->
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">All Coaches</h5>
@@ -133,9 +149,8 @@ $coaches = $db->fetchAll("
                                     <thead>
                                         <tr>
                                             <th>Coach Name</th>
-                                            <th>Team</th>
-                                            <th>Ward</th>
-                                            <th>License</th>
+                                            <th>Email</th>
+                                            <th>Phone</th>
                                             <th>Status</th>
                                             <th>Actions</th>
                                         </tr>
@@ -145,18 +160,9 @@ $coaches = $db->fetchAll("
                                             <tr>
                                                 <td>
                                                     <strong><?php echo htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']); ?></strong>
-                                                    <br>
-                                                    <small class="text-muted"><?php echo htmlspecialchars($coach['email']); ?></small>
                                                 </td>
-                                                <td>
-                                                    <?php if ($coach['team_name']): ?>
-                                                        <span class="badge bg-info"><?php echo htmlspecialchars($coach['team_name']); ?></span>
-                                                    <?php else: ?>
-                                                        <span class="text-muted">No Team</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><?php echo htmlspecialchars($coach['ward_name'] ?? 'N/A'); ?></td>
-                                                <td><?php echo htmlspecialchars($coach['license_number'] ?? 'N/A'); ?></td>
+                                                <td><?php echo htmlspecialchars($coach['email']); ?></td>
+                                                <td><?php echo htmlspecialchars($coach['phone']); ?></td>
                                                 <td>
                                                     <span class="badge bg-<?php echo $coach['is_active'] ? 'success' : 'secondary'; ?>">
                                                         <?php echo $coach['is_active'] ? 'Active' : 'Inactive'; ?>
@@ -188,17 +194,8 @@ $coaches = $db->fetchAll("
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    // Debug script to ensure links are working
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Coaches page loaded');
-
-        const buttons = document.querySelectorAll('.btn');
-        buttons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                console.log('Button clicked:', this.textContent.trim());
-                if (this.href) console.log('Button href:', this.href);
-            });
-        });
     });
 </script>
 </body>

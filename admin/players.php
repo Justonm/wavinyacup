@@ -1,8 +1,12 @@
 <?php
-require_once '../config/config.php';
+// Include all necessary configuration and helper files
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/permissions.php';
 
 // Check if user has admin permissions
-if (!is_logged_in() || !has_permission('manage_players')) {
+if (!is_logged_in() || !has_role('admin')) {
     redirect('../auth/login.php');
 }
 
@@ -11,10 +15,11 @@ $db = db();
 
 // Get players with team and ward information
 $players = $db->fetchAll("
-    SELECT p.*, t.name AS team_name, w.name AS ward_name 
+    SELECT p.*, u.first_name, u.last_name, u.email, t.name AS team_name, w.name AS ward_name 
     FROM players p 
+    LEFT JOIN users u ON p.user_id = u.id
     LEFT JOIN teams t ON p.team_id = t.id 
-    LEFT JOIN wards w ON p.ward_id = w.id 
+    LEFT JOIN wards w ON t.ward_id = w.id 
     ORDER BY p.created_at DESC
 ");
 ?>
@@ -59,7 +64,6 @@ $players = $db->fetchAll("
 <body>
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar -->
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
                 <div class="text-center mb-4">
@@ -98,10 +102,8 @@ $players = $db->fetchAll("
             </div>
         </div>
 
-        <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
             <div class="main-content p-4">
-                <!-- Header -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h2><i class="fas fa-user me-2"></i>Players Management</h2>
@@ -112,7 +114,6 @@ $players = $db->fetchAll("
                     </a>
                 </div>
 
-                <!-- Players Table -->
                 <div class="card">
                     <div class="card-header">
                         <h5 class="card-title mb-0">All Players</h5>
@@ -164,15 +165,15 @@ $players = $db->fetchAll("
                                                 </td>
                                                 <td><?php echo format_date($player['created_at']); ?></td>
                                                 <td>
-                                                    <button class="btn btn-sm btn-outline-primary">
+                                                    <a href="view_player.php?id=<?php echo htmlspecialchars($player['id']); ?>" class="btn btn-sm btn-outline-primary" title="View Player">
                                                         <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-warning">
+                                                    </a>
+                                                    <a href="edit_player.php?id=<?php echo htmlspecialchars($player['id']); ?>" class="btn btn-sm btn-outline-warning" title="Edit Player">
                                                         <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-danger">
+                                                    </a>
+                                                    <a href="delete_player.php?id=<?php echo htmlspecialchars($player['id']); ?>" class="btn btn-sm btn-outline-danger" title="Delete Player" onclick="return confirm('Are you sure you want to delete this player?');">
                                                         <i class="fas fa-trash"></i>
-                                                    </button>
+                                                    </a>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -188,19 +189,5 @@ $players = $db->fetchAll("
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    // Debug script to ensure links are working
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Players page loaded');
-
-        const buttons = document.querySelectorAll('.btn');
-        buttons.forEach(function(button) {
-            button.addEventListener('click', function() {
-                console.log('Button clicked:', this.textContent.trim());
-                if (this.href) console.log('Button href:', this.href);
-            });
-        });
-    });
-</script>
 </body>
 </html>
