@@ -57,6 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $height_cm = (int)($_POST['height_cm'] ?? 0);
     $weight_kg = (float)($_POST['weight_kg'] ?? 0);
     $preferred_foot = $_POST['preferred_foot'] ?? 'right';
+    $consent = isset($_POST['consent']);
     
     // --- Validation Block ---
     if (empty($first_name) || empty($last_name) || empty($gender) || empty($date_of_birth) || empty($position) || empty($id_number)) {
@@ -70,6 +71,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         goto display_form;
     } elseif ($jersey_number < 1 || $jersey_number > 99) {
         $error = 'Jersey number must be between 1 and 99.';
+        goto display_form;
+    } elseif (!$consent) {
+        $error = 'You must confirm that the player has agreed to the privacy policy.';
+        goto display_form;
+    }
+    
+    // Require player photo and both ID photos
+    if (!isset($_FILES['player_image']) || $_FILES['player_image']['error'] === UPLOAD_ERR_NO_FILE) {
+        $error = 'Player photo is required.';
+        goto display_form;
+    }
+    if (!isset($_FILES['id_photo_front']) || $_FILES['id_photo_front']['error'] === UPLOAD_ERR_NO_FILE) {
+        $error = 'ID photo (front) is required.';
+        goto display_form;
+    }
+    if (!isset($_FILES['id_photo_back']) || $_FILES['id_photo_back']['error'] === UPLOAD_ERR_NO_FILE) {
+        $error = 'ID photo (back) is required.';
         goto display_form;
     }
     
@@ -131,19 +149,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Create user account for player
             $username = strtolower($first_name . '.' . $last_name . '.' . time());
             $password_hash = password_hash('player123', PASSWORD_DEFAULT);
+            $consent_timestamp = date('Y-m-d H:i:s');
             
             $db->query("
-                INSERT INTO users (username, email, password_hash, role, first_name, last_name, phone, id_number) 
-                VALUES (?, ?, ?, 'player', ?, ?, ?, ?)
-            ", [$username, $email, $password_hash, $first_name, $last_name, $phone, $id_number]);
+                INSERT INTO users (username, email, password_hash, role, first_name, last_name, phone, id_number, consent_given_at) 
+                VALUES (?, ?, ?, 'player', ?, ?, ?, ?, ?)
+            ", [$username, $email, $password_hash, $first_name, $last_name, $phone, $id_number, $consent_timestamp]);
             
             $user_id = $db->lastInsertId();
             
             // Create player profile
             $db->query("
-                INSERT INTO players (user_id, team_id, first_name, last_name, gender, position, jersey_number, height_cm, weight_kg, date_of_birth, player_image, preferred_foot, is_active, id_photo_front, id_photo_back, created_by) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ", [$user_id, $team_id, $first_name, $last_name, $gender, $position, $jersey_number, $height_cm, $weight_kg, $date_of_birth, $player_image, $preferred_foot, 1, $id_front_image, $id_back_image, $user['id']]);
+                INSERT INTO players (user_id, team_id, first_name, last_name, gender, position, jersey_number, height_cm, weight_kg, date_of_birth, player_image, preferred_foot, is_active, id_photo_front, id_photo_back, created_by, consent_given_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ", [$user_id, $team_id, $first_name, $last_name, $gender, $position, $jersey_number, $height_cm, $weight_kg, $date_of_birth, $player_image, $preferred_foot, 1, $id_front_image, $id_back_image, $user['id'], $consent_timestamp]);
             
             $player_id = $db->lastInsertId();
             
@@ -212,44 +231,22 @@ $player_to_display = $current_player_count + 1;
     <title>Register Players - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .registration-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            margin-top: 2rem;
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-register {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 30px;
-            font-weight: 600;
-        }
-    </style>
+    <link href="../assets/css/main.css" rel="stylesheet">
 </head>
-<body>
+<body class="registration-page">
     <div class="container">
+        <div class="text-center mb-4">
+            <img src="../assets/images/logo.png" alt="Logo" class="sidebar-logo mb-2">
+            <h4 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h4>
+        </div>
         <div class="row justify-content-center">
             <div class="col-md-10">
-                <div class="registration-card p-4">
-                    <div class="text-center mb-4">
-                        <h2><i class="fas fa-users me-2"></i>Register <?php echo htmlspecialchars($team_name); ?> Players</h2>
-                        <p class="text-muted">Register player <?php echo ($player_to_display); ?> of <?php echo $max_players; ?></p>
+                <div class="registration-card">
+                    <div class="registration-card-header text-center">
+                        <h2 class="mb-1"><i class="fas fa-users me-2"></i>Register <?php echo htmlspecialchars($team_name); ?> Players</h2>
+                        <p class="mb-0 text-light op-7">Register player <?php echo ($player_to_display); ?> of <?php echo $max_players; ?></p>
                     </div>
+                    <div class="registration-card-body">
 
                     <?php if ($error): ?>
                         <div class="alert alert-danger" role="alert">
@@ -342,19 +339,26 @@ $player_to_display = $current_player_count + 1;
                         <hr>
 
                         <div class="mb-4">
-                            <label for="player_image" class="form-label"><i class="fas fa-camera me-2"></i>Player Photo</label>
-                            <input type="file" class="form-control" id="player_image" name="player_image" accept="image/*">
+                            <label for="player_image" class="form-label"><i class="fas fa-camera me-2"></i>Player Photo *</label>
+                            <input type="file" class="form-control" id="player_image" name="player_image" accept="image/*" required>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-4">
-                                <label for="id_photo_front" class="form-label"><i class="fas fa-id-card me-2"></i>ID Photo (Front)</label>
-                                <input type="file" class="form-control" id="id_photo_front" name="id_photo_front" accept="image/*">
+                                <label for="id_photo_front" class="form-label"><i class="fas fa-id-card me-2"></i>ID Photo (Front) *</label>
+                                <input type="file" class="form-control" id="id_photo_front" name="id_photo_front" accept="image/*" required>
                             </div>
                             <div class="col-md-6 mb-4">
-                                <label for="id_photo_back" class="form-label"><i class="fas fa-id-card me-2"></i>ID Photo (Back)</label>
-                                <input type="file" class="form-control" id="id_photo_back" name="id_photo_back" accept="image/*">
+                                <label for="id_photo_back" class="form-label"><i class="fas fa-id-card me-2"></i>ID Photo (Back) *</label>
+                                <input type="file" class="form-control" id="id_photo_back" name="id_photo_back" accept="image/*" required>
                             </div>
+                        </div>
+
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="consent" name="consent" required>
+                            <label class="form-check-label" for="consent">
+                                I confirm that the player has agreed to the <a href="../legal/privacy_policy.php" target="_blank">Privacy Policy</a> and consents to the processing of their personal data.
+                            </label>
                         </div>
                         
                         <div class="d-grid gap-2">
@@ -371,6 +375,7 @@ $player_to_display = $current_player_count + 1;
                             <i class="fas fa-arrow-left me-2"></i>Back to Team Details
                         </a>
                     <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>

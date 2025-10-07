@@ -1,15 +1,13 @@
 <?php
+
 /**
  * Gmail OAuth2 Callback Handler
  * Processes the OAuth2 callback from Google
  */
 
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/gmail_oauth.php';
 
-// Start session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
 
 $error = '';
 
@@ -30,13 +28,50 @@ try {
     // Handle the callback
     $user_info = $oauth->handleCallback($_GET['code'], $_GET['state']);
     
-    // Redirect to admin dashboard
-    header('Location: ../admin/dashboard.php');
-    exit;
+    $db = db();
+    $email = $user_info['email'];
+
+    // Check if the user is a whitelisted admin
+        $whitelisted_admins = explode(',', $_ENV['ADMIN_EMAILS'] ?? '');
+    if (!in_array($email, $whitelisted_admins)) {
+        throw new Exception('Access Denied: Your account is not authorized for admin access.');
+    }
+
+    // Use a single query to insert the user if they don't exist, and update their role on duplicate email.
+    // This is an 'upsert' operation.
+    $username = explode('@', $email)[0];
+    $db->query(
+        'INSERT INTO users (username, email, first_name, last_name, role, approval_status, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE role = ?, first_name = ?, last_name = ?, approval_status = ?, username = ?',
+        [$username, $email, $user_info['given_name'], $user_info['family_name'], 'admin', 'approved', '', 'admin', $user_info['given_name'], $user_info['family_name'], 'approved', $username]
+    );
+
+    // Get the user ID and set it in the session
+    $user = $db->fetchRow('SELECT id FROM users WHERE email = ?', [$email]);
+    if ($user) {
+        $_SESSION['user_id'] = $user['id'];
+    } else {
+        // This should never happen after an upsert, but as a safeguard:
+        throw new Exception('Failed to retrieve user ID after provisioning.');
+    }
+
+    // Store user info in session for consistency
+    $_SESSION['user_info'] = $user_info;
+    $_SESSION['admin_logged_in'] = true;
+    $_SESSION['login_method'] = 'google';
+
+        // IMPORTANT: Explicitly close the session to ensure data is written before redirecting
+    session_write_close();
+
+    // Redirect to the admin dashboard
+    redirect('../admin/dashboard.php');
     
 } catch (Exception $e) {
     $error = $e->getMessage();
     error_log("Gmail OAuth callback error: " . $error);
+
+    // Clear any potentially problematic session data
+    session_unset();
+    session_destroy();
 }
 ?>
 
@@ -74,7 +109,7 @@ try {
         </div>
         <h3 class="text-danger mb-3">Authentication Failed</h3>
         <p class="text-muted mb-4"><?= htmlspecialchars($error) ?></p>
-        <a href="admin_login.php" class="btn btn-primary">
+        <a href="/auth/admin_login.php" class="btn btn-primary">
             <i class="fas fa-arrow-left me-2"></i>Back to Login
         </a>
     </div>

@@ -18,15 +18,15 @@ if (is_logged_in()) {
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = sanitize_input($_POST['email'] ?? '');
+    $identifier = sanitize_input($_POST['identifier'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    if (empty($email) || empty($password)) {
-        $error = 'Please enter both email and password.';
+    if (empty($identifier) || empty($password)) {
+        $error = 'Please enter both email/username and password.';
     } else {
         try {
-            // Find the user by email
-            $user = db()->fetchRow("SELECT * FROM users WHERE email = ? AND is_active = 1 LIMIT 1", [$email]);
+            // Find the user by email or username
+            $user = db()->fetchRow("SELECT * FROM users WHERE (email = ? OR username = ?) AND is_active = 1 LIMIT 1", [$identifier, $identifier]);
 
             if ($user && password_verify($password, $user['password_hash'])) {
                 // Check if the user's account is approved (only for coaches)
@@ -67,16 +67,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         case 'player':
                             redirect('../player/dashboard.php');
                             break;
+                        case 'viewer':
+                            redirect('../viewer/dashboard.php');
+                            break;
                         default:
                             redirect('../index.php');
                             break;
                     }
                 }
             } else {
-                $error = 'Invalid email or password.';
+                $error = 'Invalid email/username or password.';
                 // Log failed login attempt
                 // Note: It's better to log with an IP address if the user doesn't exist
-                log_activity(null, 'failed_login', 'Invalid credentials for email: ' . $email);
+                log_activity(null, 'failed_login', 'Invalid credentials for identifier: ' . $identifier);
             }
         } catch (PDOException $e) {
             $error = 'Database error. Please contact administrator.';
@@ -90,11 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Governor Wavinya Cup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php $page_title = 'Login'; include dirname(__DIR__) . '/includes/head.php'; ?>
     <style>
         body {
             background: linear-gradient(135deg, #0d47a1, #b71c1c); /* blue to red from logo */
@@ -165,11 +164,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <form method="POST" action="">
                 <div class="mb-3">
-                    <label for="email" class="form-label">
-                        <i class="fas fa-envelope me-2"></i>Email
+                    <label for="identifier" class="form-label">
+                        <i class="fas fa-user me-2"></i>Email or Username
                     </label>
-                    <input type="email" class="form-control" id="email" name="email" 
-                           value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
+                    <input type="text" class="form-control" id="identifier" name="identifier" 
+                           value="<?= htmlspecialchars($_POST['identifier'] ?? '') ?>" required>
                 </div>
                 
                 <div class="mb-4">

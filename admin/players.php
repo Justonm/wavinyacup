@@ -4,10 +4,11 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/permissions.php';
+require_once __DIR__ . '/../auth/gmail_oauth.php';
 
-// Check if user has admin permissions
-if (!is_logged_in() || !has_role('admin')) {
-    redirect('../auth/login.php');
+// Check if user has admin permissions using the new GmailOAuth class
+if (!GmailOAuth::isValidAdminSession()) {
+    redirect('../auth/admin_login.php');
 }
 
 $user = get_logged_in_user();
@@ -26,11 +27,7 @@ $players = $db->fetchAll("
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Players Management - Governor Wavinya Cup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php $page_title = 'Players Management'; include dirname(__DIR__) . '/includes/head.php'; ?>
     <style>
         .sidebar {
             min-height: 100vh;
@@ -67,8 +64,8 @@ $players = $db->fetchAll("
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
                 <div class="text-center mb-4">
-                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                    <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
+                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup 3rd Edition Logo" style="width: 120px; height: auto;" class="mb-2">
+                    <h5 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h5>
                     <small class="text-white-50">Admin Dashboard</small>
                 </div>
 

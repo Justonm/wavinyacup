@@ -4,9 +4,6 @@
  * Provides secure admin authentication using Google OAuth2
  */
 
-require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../includes/db.php';
-require_once __DIR__ . '/../includes/helpers.php';
 
 class GmailOAuth {
     private $client_id;
@@ -21,9 +18,6 @@ class GmailOAuth {
         $this->redirect_uri = $_ENV['APP_URL'] . '/auth/gmail_callback.php';
         
         // Authorized admin emails
-        $this->authorized_emails = [
-            'governorwavinyacup@gmail.com' // Main admin email
-        ];
     }
     
     /**
@@ -62,11 +56,6 @@ class GmailOAuth {
         // Get user info from Google
         $user_info = $this->getUserInfo($token_data['access_token']);
         
-        // Verify user is authorized admin
-        if (!in_array($user_info['email'], $this->authorized_emails)) {
-            throw new Exception('Unauthorized email address');
-        }
-        
         // Create or update admin session
         $this->createAdminSession($user_info);
         
@@ -98,7 +87,14 @@ class GmailOAuth {
         curl_close($ch);
         
         if ($http_code !== 200) {
-            throw new Exception('Failed to exchange code for token');
+            $error_details = json_decode($response, true);
+            $error_message = 'Failed to exchange code for token.';
+            if (isset($error_details['error_description'])) {
+                $error_message .= ' Details: ' . $error_details['error_description'];
+            } elseif ($response) {
+                $error_message .= ' Response: ' . $response;
+            }
+            throw new Exception($error_message);
         }
         
         return json_decode($response, true);

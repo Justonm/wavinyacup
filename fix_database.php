@@ -1,90 +1,129 @@
 <?php
-// Simple database fix script
-echo "🔧 Fixing database connection...\n";
+/**
+ * Intelligent Database Migration Script v2
+ *
+ * This script connects to the database using credentials from the .env file
+ * and safely applies all necessary schema changes. It checks for the existence
+ * of tables and columns before attempting to create them.
+ */
 
-// Try to connect to MySQL with different methods
-$connections = [
-    ['host' => 'localhost', 'user' => 'root', 'pass' => ''],
-    ['host' => 'localhost', 'user' => 'root', 'pass' => 'password'],
-    ['host' => '127.0.0.1', 'user' => 'root', 'pass' => ''],
-    ['host' => '127.0.0.1', 'user' => 'root', 'pass' => 'password']
-];
+echo "🚀 Starting database migration...\n";
 
-$pdo = null;
-foreach ($connections as $conn) {
-    try {
-        $pdo = new PDO("mysql:host={$conn['host']}", $conn['user'], $conn['pass']);
-        echo "✅ Connected to MySQL using {$conn['user']}@{$conn['host']}\n";
-        break;
-    } catch (PDOException $e) {
-        echo "❌ Failed: {$conn['user']}@{$conn['host']} - " . $e->getMessage() . "\n";
+// --- .env File Loader ---
+function loadEnv($path) {
+    if (!file_exists($path)) {
+        throw new Exception("The .env file is missing at path: $path");
+    }
+    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos(trim($line), '#') === 0) {
+            continue;
+        }
+        list($name, $value) = explode('=', $line, 2);
+        $name = trim($name);
+        $value = trim(str_replace('"', '', $value)); // Remove quotes from value
+        if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
+            putenv(sprintf('%s=%s', $name, $value));
+            $_ENV[$name] = $value;
+            $_SERVER[$name] = $value;
+        }
     }
 }
 
-if (!$pdo) {
-    echo "\n🚨 Cannot connect to MySQL. Please try these steps:\n";
-    echo "1. Start MySQL: sudo systemctl start mysql\n";
-    echo "2. Reset MySQL password: sudo mysql_secure_installation\n";
-    echo "3. Or create a .env file with correct database credentials\n";
+try {
+    // Load .env from the project root
+    loadEnv(__DIR__ . '/.env');
+
+    // --- Database Connection ---
+    $dbHost = $_ENV['DB_HOST'] ?? 'localhost';
+    $dbName = $_ENV['DB_NAME'] ?? 'machakos_teams';
+    $dbUser = $_ENV['DB_USER'] ?? 'root';
+    $dbPass = $_ENV['DB_PASS'] ?? '';
+    $dbCharset = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
+
+    if (empty($dbUser)) {
+        throw new Exception("DB_USER not found in .env file.");
+    }
+
+    $dsn = "mysql:host=$dbHost;dbname=$dbName;charset=$dbCharset";
+    $options = [
+        PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES   => false,
+    ];
+
+    $pdo = new PDO($dsn, $dbUser, $dbPass, $options);
+    echo "✅ Database connection successful.\n";
+
+} catch (Exception $e) {
+    echo "❌ Configuration or Connection Error: " . $e->getMessage() . "\n";
     exit(1);
 }
 
-// Create database
-try {
-    $pdo->exec("CREATE DATABASE IF NOT EXISTS machakos_teams");
-    echo "✅ Database 'machakos_teams' created/verified\n";
-    
-    $pdo->exec("USE machakos_teams");
-    echo "✅ Using database 'machakos_teams'\n";
-    
-    // Check if tables exist
-    $stmt = $pdo->query("SHOW TABLES");
-    $tables = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    
-    if (empty($tables)) {
-        echo "📦 Importing database schema...\n";
-        $schema = file_get_contents('database/schema.sql');
-        
-        // Remove the CREATE DATABASE and USE statements since we're already connected
-        $schema = preg_replace('/CREATE DATABASE.*?;/i', '', $schema);
-        $schema = preg_replace('/USE.*?;/i', '', $schema);
-        
-        // Split and execute each statement
-        $statements = array_filter(array_map('trim', explode(';', $schema)));
-        foreach ($statements as $statement) {
-            if (!empty($statement)) {
-                try {
-                    $pdo->exec($statement);
-                } catch (PDOException $e) {
-                    echo "⚠️  Warning: " . $e->getMessage() . "\n";
-                }
-            }
-        }
-        echo "✅ Database schema imported!\n";
-    } else {
-        echo "✅ Database tables already exist\n";
+function columnExists($pdo, $table, $column) {
+    try {
+        $stmt = $pdo->prepare("SHOW COLUMNS FROM `$table` LIKE :column");
+        $stmt->execute(['column' => $column]);
+        return $stmt->rowCount() > 0;
+    } catch (PDOException $e) {
+        return false;
     }
-    
-    // Verify admin user exists
-    $stmt = $pdo->query("SELECT COUNT(*) FROM users WHERE username = 'admin'");
-    $adminCount = $stmt->fetchColumn();
-    
-    if ($adminCount == 0) {
-        echo "👤 Creating admin user...\n";
-        $pdo->exec("INSERT INTO users (username, email, password_hash, role, first_name, last_name, phone, id_number) VALUES ('admin', 'admin@machakoscounty.go.ke', '\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'County', 'Administrator', '+254700000000', '12345678')");
-        echo "✅ Admin user created!\n";
-    } else {
-        echo "✅ Admin user already exists\n";
-    }
-    
-    echo "\n🎉 Database setup completed successfully!\n";
-    echo "📝 Default admin credentials:\n";
-    echo "   Username: admin\n";
-    echo "   Password: password\n";
-    echo "\n🌐 Your system should now work at:\n";
-    echo "   http://localhost:8000/wavinyacup/admin/teams.php\n";
-    
-} catch (PDOException $e) {
-    echo "❌ Database error: " . $e->getMessage() . "\n";
 }
-?> 
+
+function tableExists($pdo, $table) {
+    try {
+        $pdo->query("SELECT 1 FROM `$table` LIMIT 1");
+    } catch (Exception $e) {
+        return false;
+    }
+    return true;
+}
+
+// --- MIGRATION TASKS ---
+$migrations = [
+    "ALTER TABLE `users` ADD COLUMN `last_login` TIMESTAMP NULL DEFAULT NULL" => !columnExists($pdo, 'users', 'last_login'),
+    "ALTER TABLE `users` ADD COLUMN `approval_status` ENUM('pending', 'approved', 'rejected') DEFAULT 'approved'" => !columnExists($pdo, 'users', 'approval_status'),
+    "ALTER TABLE `users` ADD COLUMN `temp_password` VARCHAR(255) NULL" => !columnExists($pdo, 'users', 'temp_password'),
+    "ALTER TABLE `users` ADD COLUMN `approved_by` INT NULL" => !columnExists($pdo, 'users', 'approved_by'),
+    "ALTER TABLE `users` ADD COLUMN `approved_at` TIMESTAMP NULL" => !columnExists($pdo, 'users', 'approved_at'),
+    "ALTER TABLE `users` ADD COLUMN `rejection_reason` TEXT NULL" => !columnExists($pdo, 'users', 'rejection_reason'),
+    "ALTER TABLE `users` ADD COLUMN `profile_image_path` VARCHAR(255) NULL" => !columnExists($pdo, 'users', 'profile_image_path'),
+    "ALTER TABLE `coaches` ADD COLUMN `team_id` INT NULL" => !columnExists($pdo, 'coaches', 'team_id'),
+    "ALTER TABLE `players` ADD COLUMN `player_image_path` VARCHAR(255) NULL" => !columnExists($pdo, 'players', 'player_image_path'),
+    "ALTER TABLE `players` ADD COLUMN `id_card_image_path` VARCHAR(255) NULL" => !columnExists($pdo, 'players', 'id_card_image_path'),
+    "ALTER TABLE `teams` ADD COLUMN `team_image_path` VARCHAR(255) NULL" => !columnExists($pdo, 'teams', 'team_image_path'),
+    "CREATE TABLE `activity_log` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `user_id` INT,
+        `action` VARCHAR(255) NOT NULL,
+        `description` TEXT,
+        `ip_address` VARCHAR(45),
+        `user_agent` VARCHAR(255),
+        `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
+    )" => !tableExists($pdo, 'activity_log')
+];
+
+echo "🔧 Applying necessary migrations...\n";
+$migrationsApplied = 0;
+
+foreach ($migrations as $query => $shouldRun) {
+    if ($shouldRun) {
+        try {
+            $pdo->exec($query);
+            echo "  -> Applied: " . substr(preg_replace('/\\s+/', ' ', $query), 0, 80) . "...\n";
+            $migrationsApplied++;
+        } catch (PDOException $e) {
+            echo "  -> ❌ Error applying migration: " . $e->getMessage() . "\n";
+        }
+    }
+}
+
+if ($migrationsApplied > 0) {
+    echo "✅ Applied $migrationsApplied new migration(s).\n";
+} else {
+    echo "✅ Database schema is already up to date.\n";
+}
+
+echo "🎉 Migration script finished.\n";
+?>

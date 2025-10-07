@@ -4,10 +4,11 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/permissions.php';
+require_once __DIR__ . '/../auth/gmail_oauth.php';
 
 // Check if user has admin permissions
-if (!is_logged_in() || !has_role('admin')) {
-    redirect('../auth/login.php');
+if (!GmailOAuth::isValidAdminSession()) {
+    redirect('../auth/admin_login.php');
 }
 
 $user = get_logged_in_user();
@@ -112,7 +113,7 @@ function restoreDatabase($file) {
 }
 
 // Fetch current values (placeholders for now)
-$app_name = defined('APP_NAME') ? APP_NAME : 'Governor Wavinya Cup';
+$app_name = defined('APP_NAME') ? APP_NAME : 'Governor Wavinya Cup 3rd Edition';
 $app_url = defined('APP_URL') ? APP_URL : '';
 $app_email = defined('APP_EMAIL') ? APP_EMAIL : '';
 $app_timezone = defined('APP_TIMEZONE') ? APP_TIMEZONE : 'Africa/Nairobi';
@@ -129,7 +130,7 @@ $session_timeout = defined('SESSION_TIMEOUT') ? SESSION_TIMEOUT : 60;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings - Governor Wavinya Cup</title>
+    <title>Settings - Governor Wavinya Cup 3rd Edition</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -165,8 +166,8 @@ $session_timeout = defined('SESSION_TIMEOUT') ? SESSION_TIMEOUT : 60;
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
                 <div class="text-center mb-4">
-                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                    <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
+                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup 3rd Edition Logo" style="width: 120px; height: auto;" class="mb-2">
+                    <h5 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h5>
                     <small class="text-white-50">Admin Dashboard</small>
                 </div>
 

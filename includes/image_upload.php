@@ -53,7 +53,7 @@ function upload_image($file, $type, $subtype = null) {
     $filename = $subtype ? "{$type}_{$subtype}_{$timestamp}_{$random}.{$extension}" : "{$type}_{$timestamp}_{$random}.{$extension}";
     
     // Set upload path using ROOT_PATH for an absolute path
-    $upload_dir = ROOT_PATH . "/teams/uploads/{$type}/";
+    $upload_dir = ROOT_PATH . "/uploads/{$type}/";
     $upload_path = $upload_dir . $filename;
     
     // Ensure the specific type directory exists
@@ -78,7 +78,7 @@ function upload_image($file, $type, $subtype = null) {
     }
     
     // Store the path relative to the web root for the database
-    $db_path = "teams/uploads/{$type}/{$filename}";
+    $db_path = "uploads/{$type}/{$filename}";
     
     return [
         'success' => true,
@@ -363,4 +363,46 @@ function generate_thumbnail($filepath, $width = 150, $height = 150) {
     // Return the web-accessible URL
     $relative_path = str_replace(ROOT_PATH . '/', '', $thumbnail_path_abs);
     return $relative_path;
+}
+
+/**
+ * Simple upload without resizing (fallback for restricted environments)
+ * @param array $file $_FILES array element
+ * @param string $type 'team', 'player', 'coach', or 'id'
+ * @param string $subtype optional subtype to include in filename
+ * @return array ['success' => bool, 'path' => string, 'error' => string]
+ */
+function upload_image_simple($file, $type, $subtype = null) {
+    // Basic validation (reuse validate_image_file for size/type and upload error)
+    $validation = validate_image_file($file);
+    if (!$validation['success']) {
+        return $validation;
+    }
+
+    // Ensure directories exist
+    create_upload_directories();
+
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $timestamp = time();
+    $random = bin2hex(random_bytes(8));
+    $filename = $subtype ? "{$type}_{$subtype}_{$timestamp}_{$random}.{$extension}" : "{$type}_{$timestamp}_{$random}.{$extension}";
+
+    $upload_dir = ROOT_PATH . "/uploads/{$type}/";
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+    $upload_path = $upload_dir . $filename;
+
+    if (!move_uploaded_file($file['tmp_name'], $upload_path)) {
+        return [
+            'success' => false,
+            'error' => 'Failed to move uploaded file (simple). Check directory permissions.'
+        ];
+    }
+
+    return [
+        'success' => true,
+        'path' => "uploads/{$type}/{$filename}",
+        'filename' => $filename
+    ];
 }

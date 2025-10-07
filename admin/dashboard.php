@@ -15,7 +15,7 @@ require_once __DIR__ . '/../auth/gmail_oauth.php';
 
 // Check if user has valid admin session (OAuth or regular)
 if (!GmailOAuth::isValidAdminSession() && (!is_logged_in() || !has_role('admin'))) {
-    redirect('../auth/admin_login.php');
+    redirect(app_base_url() . '/auth/admin_login.php');
 }
 
 $user = get_logged_in_user();
@@ -58,93 +58,13 @@ if (!function_exists('format_datetime')) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Governor Wavinya Cup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .sidebar {
-            min-height: 100vh;
-            background: linear-gradient(135deg, #0d47a1, #b71c1c);
-        }
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.85);
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin: 2px 0;
-        }
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            color: white;
-            background: rgba(255, 255, 255, 0.1);
-        }
-        .main-content {
-            background: #f8f9fa;
-            min-height: 100vh;
-        }
-        .stat-card {
-            background: white;
-            border-radius: 15px;
-            padding: 1.5rem;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            border-left: 4px solid;
-        }
-        .stat-card.primary { border-left-color: #0d47a1; }
-        .stat-card.success { border-left-color: #28a745; }
-        .stat-card.warning { border-left-color: #ffc107; }
-        .stat-card.info { border-left-color: #b71c1c; }
-        .stat-icon {
-            font-size: 2.5rem;
-            opacity: 0.7;
-        }
-    </style>
+    <?php $page_title = 'Admin Dashboard'; include dirname(__DIR__) . '/includes/head.php'; ?>
 </head>
 <body>
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-3 col-lg-2 px-0">
-                <div class="sidebar p-3">
-                    <div class="text-center mb-4">
-                        <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                        <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
-                        <small class="text-white-50">Admin Dashboard</small>
-                    </div>
-                    
-                    <nav class="nav flex-column">
-                        <a class="nav-link active" href="dashboard.php">
-                            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                        </a>
-                        <a class="nav-link" href="teams.php">
-                            <i class="fas fa-users me-2"></i>Teams
-                        </a>
-                        <a class="nav-link" href="players.php">
-                            <i class="fas fa-user me-2"></i>Players
-                        </a>
-                        <a class="nav-link" href="coaches.php">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>Coaches
-                        </a>
-                        <a class="nav-link" href="pending_coaches.php">
-                            <i class="fas fa-user-clock me-2"></i>Pending Coaches
-                            <?php if ($pending_coach_registrations > 0): ?>
-                                <span class="badge bg-danger ms-1"><?php echo $pending_coach_registrations; ?></span>
-                            <?php endif; ?>
-                        </a>
-                        <a class="nav-link" href="registrations.php">
-                            <i class="fas fa-clipboard-list me-2"></i>Registrations
-                        </a>
-                        <a class="nav-link" href="reports.php">
-                            <i class="fas fa-chart-bar me-2"></i>Reports
-                        </a>
-                        <a class="nav-link" href="settings.php">
-                            <i class="fas fa-cog me-2"></i>Settings
-                        </a>
-                        <hr class="text-white-50">
-                        <a class="nav-link" href="../auth/logout.php">
-                            <i class="fas fa-sign-out-alt me-2"></i>Logout
-                        </a>
-                    </nav>
-                </div>
+                <?php include 'sidebar.php'; ?>
             </div>
             
             <div class="col-md-9 col-lg-10">
@@ -248,7 +168,7 @@ if (!function_exists('format_datetime')) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-4">
-                                            <a href="../teams/register.php" class="btn btn-primary btn-lg w-100 mb-2">
+                                            <a href="teams/register.php" class="btn btn-primary btn-lg w-100 mb-2">
                                                 <i class="fas fa-plus me-2"></i>Add New Team
                                             </a>
                                         </div>

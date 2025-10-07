@@ -1,7 +1,6 @@
 -- Add image fields to existing tables
 -- Run this after the main schema.sql
 
-USE machakos_teams;
 
 -- Add profile_image field to users table
 ALTER TABLE users ADD COLUMN profile_image VARCHAR(255) AFTER phone;

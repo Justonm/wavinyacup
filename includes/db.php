@@ -72,6 +72,18 @@ class Database {
         return $stmt->fetchColumn();
     }
 
+    /**
+     * Fetches a single, scalar value from the database query.
+     * @param string $sql The SQL query.
+     * @param array $params The parameters for the prepared statement.
+     * @return mixed The value of the cell, or null if no result is found.
+     */
+    public function fetchCell(string $sql, array $params = []): mixed {
+        $stmt = $this->query($sql, $params);
+        $result = $stmt->fetch(PDO::FETCH_NUM);
+        return $result ? $result[0] : null;
+    }
+
     public function lastInsertId(): string|false {
         return $this->connection->lastInsertId();
     }

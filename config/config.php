@@ -29,14 +29,38 @@ define('SESSION_LIFETIME', 3600); // 1 hour in seconds
 // ==== Fix Session Permission Issue (for local dev) ====
 $customSessionPath = ROOT_PATH . '/sessions';
 if (!is_dir($customSessionPath)) {
-    mkdir($customSessionPath, 0700, true);
+    // Attempt to create the directory with read/write permissions for the owner
+    // and the group.
+    mkdir($customSessionPath, 0775, true);
+
+    // After creation, explicitly set permissions to ensure the web server
+    // user and group can write to it.
+    chmod($customSessionPath, 0775);
+}
+
+// Ensure the path is writable before starting the session.
+if (!is_writable($customSessionPath)) {
+    // Fallback to the system's default temporary directory if the custom path isn't writable.
+    // This prevents a fatal error.
+    if (!headers_sent()) {
+        ini_set('session.save_path', sys_get_temp_dir());
+    }
+} else {
+    if (!headers_sent()) {
+        ini_set('session.save_path', $customSessionPath);
+    }
 }
 
 // ==== Start Session ====
 if (session_status() === PHP_SESSION_NONE) {
-    ini_set('session.save_path', $customSessionPath);
-    session_name(SESSION_NAME);
-    session_start();
+    // Check if headers have already been sent to prevent warnings
+    if (!headers_sent()) {
+        ini_set('session.cookie_httponly', 1);
+        ini_set('session.cookie_secure', 0); // Set to 1 for HTTPS
+        ini_set('session.use_strict_mode', 1);
+        session_name(SESSION_NAME);
+        session_start();
+    }
 }
 
 // ==== Security Settings ====
@@ -45,7 +69,7 @@ define('PASSWORD_COST', 12); // bcrypt cost factor
 
 // ==== File Upload Settings ====
 define('UPLOAD_DIR', ROOT_PATH . '/uploads/');
-define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5MB
+define('MAX_FILE_SIZE', 25 * 1024 * 1024); // 5MB
 define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif']);
 
 // ==== Pagination ====
@@ -69,6 +93,17 @@ if (DEBUG_MODE) {
 } else {
     error_reporting(0);
     ini_set('display_errors', 0);
+}
+
+// ==== Load Helper Functions (after session start) ====
+require_once __DIR__ . '/../includes/helpers.php';
+
+// Fallback: define app_base_url() if not defined 
+if (!function_exists('app_base_url')) {
+    function app_base_url() {
+        // FIX: Use the stable APP_URL constant instead of the complex and failing path calculation.
+        return APP_URL;
+    }
 }
 
 // ==== Database Configuration ====

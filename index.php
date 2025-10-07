@@ -11,7 +11,8 @@ require_once __DIR__ . '/includes/permissions.php';
 
 // Check if user is logged in
 if (!is_logged_in()) {
-    redirect('auth/login.php');
+    // Redirect to the public landing page if not logged in
+    redirect('public_index.php');
 }
 
 // Get user data and role from the session

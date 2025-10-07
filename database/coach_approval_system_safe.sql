@@ -11,7 +11,7 @@ ADD COLUMN IF NOT EXISTS rejection_reason TEXT NULL;
 
 -- Add foreign key for approved_by (only if it doesn't exist)
 SET @fk_exists = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
-                  WHERE TABLE_SCHEMA = 'machakos_teams' 
+                  WHERE TABLE_SCHEMA = DATABASE() 
                   AND TABLE_NAME = 'users' 
                   AND CONSTRAINT_NAME LIKE '%approved_by%');
 
@@ -28,7 +28,7 @@ ALTER TABLE coaches ADD COLUMN IF NOT EXISTS team_id INT NULL;
 
 -- Add foreign key for coaches.team_id (only if it doesn't exist)
 SET @fk_exists2 = (SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE 
-                   WHERE TABLE_SCHEMA = 'machakos_teams' 
+                   WHERE TABLE_SCHEMA = DATABASE() 
                    AND TABLE_NAME = 'coaches' 
                    AND CONSTRAINT_NAME LIKE '%team_id%');
 

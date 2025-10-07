@@ -73,8 +73,11 @@ require_once 'config/config.php';
                                 <a href="coaches/self_register.php" class="btn btn-custom btn-lg">
                                     <i class="fas fa-user-plus me-2"></i>Register as Coach
                                 </a>
-                                <a href="auth/login.php" class="btn btn-outline-primary btn-lg">
-                                    <i class="fas fa-sign-in-alt me-2"></i>Login
+                                <a href="auth/coach_login.php" class="btn btn-outline-primary btn-lg">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Coach Login
+                                </a>
+                                <a href="auth/admin_login.php" class="btn btn-outline-secondary btn-lg">
+                                    <i class="fas fa-user-shield me-2"></i>Admin Login
                                 </a>
                             </div>
                         </div>

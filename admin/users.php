@@ -53,11 +53,7 @@ $users = $db->fetchAll("SELECT * FROM users ORDER BY full_name ASC");
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Users - Governor Wavinya Cup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php $page_title = 'Users'; include dirname(__DIR__) . '/includes/head.php'; ?>
     <style>
         .sidebar {
             min-height: 100vh;
@@ -86,8 +82,8 @@ $users = $db->fetchAll("SELECT * FROM users ORDER BY full_name ASC");
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
             <div class="text-center mb-4">
-                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                    <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
+                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup 3rd Edition Logo" style="width: 120px; height: auto;" class="mb-2">
+                    <h5 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h5>
                     <small class="text-white-50">Admin Dashboard</small>
                 </div>
 

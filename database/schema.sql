@@ -1,9 +1,7 @@
 -- Machakos County Team Registration System Database Schema
 -- FIFA-style team registration system
 
--- Create database
-CREATE DATABASE IF NOT EXISTS machakos_teams;
-USE machakos_teams;
+-- The database connection is now handled by the setup script.
 
 -- Users table for authentication
 CREATE TABLE users (

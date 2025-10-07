@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = sanitize_input($_POST['email'] ?? '');
         $phone = sanitize_input($_POST['phone'] ?? '');
         $team_name = sanitize_input($_POST['team_name'] ?? '');
+        $consent = isset($_POST['consent']);
 
         // Basic validation
         if (empty($first_name) || empty($last_name) || empty($email) || empty($team_name)) {
@@ -40,6 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Please enter a valid email address.';
         } elseif (!empty($phone) && !validate_phone($phone)) {
             $error = 'Please enter a valid phone number.';
+        } elseif (!$consent) {
+            $error = 'You must agree to the privacy policy to register.';
         } else {
             // Check if email or team name already exists
             $user_exists = $db->fetchRow("SELECT id FROM users WHERE email = ? LIMIT 1", [$email]);
@@ -61,10 +64,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $role = 'captain';
             $status = 'pending';
 
+            $consent_timestamp = date('Y-m-d H:i:s');
             // Create a temporary user account with 'pending' status and NULL password
             $db->query("
-                INSERT INTO users (first_name, last_name, email, phone, role, password_hash, approval_status, activation_token)
-                VALUES (?, ?, ?, ?, ?, NULL, ?, ?)
+                INSERT INTO users (first_name, last_name, email, phone, role, password_hash, approval_status, activation_token, consent_given_at)
+                VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?)
             ", [
                 $first_name,
                 $last_name,
@@ -72,7 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $phone,
                 $role,
                 $status,
-                $activation_token
+                $activation_token,
+                $consent_timestamp
             ]);
 
             $user_id = $db->lastInsertId();
@@ -118,36 +123,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Captain & Team Registration - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .registration-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            margin-top: 2rem;
-            padding: 2rem;
-        }
-    </style>
+    <link href="assets/css/main.css" rel="stylesheet">
 </head>
-<body>
+<body class="registration-page">
     <div class="container">
+        <div class="text-center mb-4">
+            <img src="assets/images/logo.png" alt="Logo" class="sidebar-logo mb-2">
+            <h4 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h4>
+        </div>
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <div class="registration-card">
-                    <h2 class="text-center mb-4"><i class="fas fa-users-cog me-2"></i>Captain & Team Registration</h2>
-                    
-                    <?php if ($error): ?>
-                        <div class="alert alert-danger" role="alert"><?php echo $error; ?></div>
-                    <?php endif; ?>
-                    
-                    <?php if ($success): ?>
-                        <div class="alert alert-success" role="alert"><?php echo $success; ?></div>
-                    <?php endif; ?>
+                    <div class="registration-card-header text-center">
+                        <h2 class="mb-1"><i class="fas fa-users-cog me-2"></i>Captain & Team Registration</h2>
+                        <p class="mb-0 text-light op-7">Register your team for the Wavinya Cup</p>
+                    </div>
+                    <div class="registration-card-body">
+                        <?php if ($error): ?>
+                            <div class="alert alert-danger" role="alert"><?php echo $error; ?></div>
+                        <?php endif; ?>
+                        
+                        <?php if ($success): ?>
+                            <div class="alert alert-success" role="alert"><?php echo $success; ?></div>
+                        <?php endif; ?>
 
-                    <form method="POST">
+                        <form method="POST">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
 
                         <div class="row">
@@ -173,10 +173,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <label for="team_name" class="form-label"><i class="fas fa-shield-alt me-2"></i>Team Name</label>
                             <input type="text" class="form-control" id="team_name" name="team_name" required>
                         </div>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="consent" name="consent" required>
+                            <label class="form-check-label" for="consent">
+                                I agree to the <a href="legal/privacy_policy.php" target="_blank">Privacy Policy</a> and consent to the processing of my personal data.
+                            </label>
+                        </div>
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-check-circle me-2"></i>Register My Team</button>
                         </div>
-                    </form>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>

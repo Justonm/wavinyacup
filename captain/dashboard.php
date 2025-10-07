@@ -5,7 +5,7 @@ require_once dirname(__DIR__) . '/includes/helpers.php';
 
 // Check if user is logged in and has captain role
 if (!is_logged_in() || !has_role('captain')) {
-    redirect('../auth/login.php');
+    redirect(app_base_url() . '/auth/login.php');
 }
 
 $user = get_logged_in_user();
@@ -57,94 +57,9 @@ if ($captain_team_id) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Captain Dashboard - <?php echo APP_NAME; ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .dashboard-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-            margin-top: 2rem;
-            padding: 2rem;
-        }
-        .profile-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            transition: transform 0.3s ease;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        .team-logo {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 3px solid white;
-        }
-        .captain-photo {
-            width: 120px;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 4px solid white;
-        }
-        .player-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-        .player-card:hover {
-            transform: translateY(-2px);
-        }
-        .activity-item {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            border-left: 4px solid #667eea;
-        }
-        .btn-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-        }
-        .btn-custom:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            color: white;
-        }
-        .position-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
-    </style>
+    <?php $page_title = 'Captain Dashboard'; include dirname(__DIR__) . '/includes/head.php'; ?>
 </head>
-<body>
+<body class="main-content">
     <div class="container-fluid py-4">
         <div class="row justify-content-center">
             <div class="col-lg-10">
@@ -155,7 +70,7 @@ if ($captain_team_id) {
                             <p class="text-muted mb-0">Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
                         </div>
                         <div class="d-flex gap-2">
-                            <a href="../auth/logout.php" class="btn btn-outline-danger">
+                            <a href="<?php echo app_base_url(); ?>/auth/logout.php" class="btn btn-outline-danger">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
                         </div>
@@ -203,28 +118,28 @@ if ($captain_team_id) {
 
                         <div class="row mb-4">
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card primary text-center">
                                     <i class="fas fa-users fa-2x text-primary mb-2"></i>
                                     <h4 class="mb-1"><?php echo count($players); ?></h4>
                                     <p class="text-muted mb-0">Team Players</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card warning text-center">
                                     <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
                                     <h4 class="mb-1">Active</h4>
                                     <p class="text-muted mb-0">Team Status</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card success text-center">
                                     <i class="fas fa-map-marker-alt fa-2x text-success mb-2"></i>
                                     <h4 class="mb-1"><?php echo htmlspecialchars($team['sub_county_name'] ?? 'N/A'); ?></h4>
                                     <p class="text-muted mb-0">Sub County</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card info text-center">
                                     <i class="fas fa-clock fa-2x text-info mb-2"></i>
                                     <h4 class="mb-1"><?php echo date('Y'); ?></h4>
                                     <p class="text-muted mb-0">Season</p>
@@ -253,9 +168,9 @@ if ($captain_team_id) {
                                                                 <div class="flex-shrink-0">
                                                                     <?php if ($player['player_image']): ?>
                                                                         <img src="../<?php echo htmlspecialchars($player['player_image']); ?>" 
-                                                                             alt="Player Photo" class="rounded-circle" style="width: 50px; height: 50px; object-fit: cover;">
+                                                                             alt="Player Photo" class="rounded-circle player-avatar">
                                                                     <?php else: ?>
-                                                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                                        <div class="rounded-circle bg-light d-flex align-items-center justify-content-center player-avatar-placeholder">
                                                                             <i class="fas fa-user text-muted"></i>
                                                                         </div>
                                                                     <?php endif; ?>

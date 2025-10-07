@@ -3,7 +3,7 @@ require_once '../config/config.php';
 
 // Check if user is logged in and has player role
 if (!is_logged_in() || !has_role('player')) {
-    redirect('../auth/login.php');
+    redirect(app_base_url() . '/auth/login.php');
 }
 
 $user = get_logged_in_user();
@@ -44,79 +44,9 @@ $activities = $db->fetchAll("
     <title>Player Dashboard - Machakos County Team Registration System</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .dashboard-container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            backdrop-filter: blur(10px);
-        }
-        .profile-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        .stat-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1.5rem;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            transition: transform 0.3s ease;
-        }
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        .team-logo {
-            width: 80px;
-            height: 80px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 3px solid white;
-        }
-        .player-photo {
-            width: 120px;
-            height: 120px;
-            object-fit: cover;
-            border-radius: 50%;
-            border: 4px solid white;
-        }
-        .activity-item {
-            background: white;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 0.5rem;
-            border-left: 4px solid #667eea;
-        }
-        .registration-card {
-            background: white;
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-        }
-        .btn-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 25px;
-            transition: all 0.3s ease;
-        }
-        .btn-custom:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            color: white;
-        }
-    </style>
+    <link href="../assets/css/main.css" rel="stylesheet">
 </head>
-<body>
+<body class="main-content">
     <div class="container-fluid py-4">
         <div class="row justify-content-center">
             <div class="col-lg-10">
@@ -130,7 +60,7 @@ $activities = $db->fetchAll("
                             <p class="text-muted mb-0">Welcome back, <?php echo htmlspecialchars($user['first_name'] . ' ' . $user['last_name']); ?>!</p>
                         </div>
                         <div class="d-flex gap-2">
-                            <a href="../auth/logout.php" class="btn btn-outline-danger">
+                            <a href="<?php echo app_base_url(); ?>/auth/logout.php" class="btn btn-outline-danger">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
                         </div>
@@ -176,28 +106,28 @@ $activities = $db->fetchAll("
                         <!-- Statistics Cards -->
                         <div class="row mb-4">
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card primary text-center">
                                     <i class="fas fa-calendar-check fa-2x text-primary mb-2"></i>
                                     <h4 class="mb-1"><?php echo count($registrations); ?></h4>
                                     <p class="text-muted mb-0">Registrations</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card warning text-center">
                                     <i class="fas fa-trophy fa-2x text-warning mb-2"></i>
                                     <h4 class="mb-1"><?php echo $player['team_id'] ? 'Active' : 'Inactive'; ?></h4>
                                     <p class="text-muted mb-0">Team Status</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card success text-center">
                                     <i class="fas fa-map-marker-alt fa-2x text-success mb-2"></i>
                                     <h4 class="mb-1"><?php echo htmlspecialchars($player['sub_county_name'] ?? 'N/A'); ?></h4>
                                     <p class="text-muted mb-0">Sub County</p>
                                 </div>
                             </div>
                             <div class="col-md-3">
-                                <div class="stat-card text-center">
+                                <div class="stat-card info text-center">
                                     <i class="fas fa-clock fa-2x text-info mb-2"></i>
                                     <h4 class="mb-1"><?php echo date('Y'); ?></h4>
                                     <p class="text-muted mb-0">Season</p>
@@ -281,7 +211,7 @@ $activities = $db->fetchAll("
                             <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
                             <h3>Profile Not Found</h3>
                             <p class="text-muted">Your player profile could not be found. Please contact your administrator.</p>
-                            <a href="../auth/logout.php" class="btn btn-custom">
+                            <a href="<?php echo app_base_url(); ?>/auth/logout.php" class="btn btn-custom">
                                 <i class="fas fa-sign-out-alt me-2"></i>Logout
                             </a>
                         </div>

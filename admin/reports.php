@@ -4,10 +4,11 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/permissions.php';
+require_once __DIR__ . '/../auth/gmail_oauth.php';
 
 // Check if user has admin permissions
-if (!is_logged_in() || !has_role('admin')) {
-    redirect('../auth/login.php');
+if (!GmailOAuth::isValidAdminSession()) {
+    redirect('../auth/admin_login.php');
 }
 
 $user = get_logged_in_user();
@@ -18,8 +19,11 @@ if (isset($_GET['report_type'])) {
     $report_type = sanitize_input($_GET['report_type']);
     $format = sanitize_input($_GET['format'] ?? 'excel'); // Default to Excel for downloads
 
-    // Fetch comprehensive data for the report
-    $report_data = $db->fetchAll("
+    // Optional filters
+    $sub_county_id = isset($_GET['sub_county_id']) ? (int)$_GET['sub_county_id'] : null;
+
+    // Build SQL with optional sub_county filter
+    $sql = "
         SELECT 
             t.name AS team_name,
             t.status AS team_status,
@@ -29,20 +33,168 @@ if (isset($_GET['report_type'])) {
             CONCAT(u.first_name, ' ', u.last_name) AS coach_name
         FROM teams t
         LEFT JOIN wards w ON t.ward_id = w.id
-        LEFT JOIN sub_counties sc ON t.sub_county_id = sc.id
+        LEFT JOIN sub_counties sc ON w.sub_county_id = sc.id
         LEFT JOIN players p ON p.team_id = t.id
-        LEFT JOIN users u ON u.team_id = t.id AND u.role = 'coach'
+        LEFT JOIN users u ON u.id = t.coach_id
+        
+        WHERE (:sub_county_id IS NULL OR w.sub_county_id = :sub_county_id)
         GROUP BY t.id
         ORDER BY sub_county_name, team_name
-    ");
+    ";
+
+    $report_data = $db->fetchAll($sql, ['sub_county_id' => $sub_county_id]);
 
     // Start report generation based on format
     if ($format === 'pdf') {
-        // For a proper PDF, you need a library like FPDF or TCPDF.
-        // This is a simple placeholder to inform the user.
-        header('Content-Type: text/plain');
-        header('Content-Disposition: attachment; filename="report_info.txt"');
-        echo "To generate a proper PDF report, you must first install a PHP PDF library (e.g., FPDF or TCPDF) and write the code to render the report data into a PDF format.";
+        // Generate HTML for PDF
+        $html = '<!DOCTYPE html>
+        <html>
+        <head>
+            <title>Teams Report - ' . date('Y-m-d') . '</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 12px; }
+                h1 { color: #2c3e50; text-align: center; margin-bottom: 20px; }
+                .header { margin-bottom: 20px; }
+                .logo { text-align: center; margin-bottom: 15px; }
+                .report-title { text-align: center; font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+                .report-date { text-align: center; color: #7f8c8d; margin-bottom: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                th { background-color: #2c3e50; color: white; padding: 8px; text-align: left; }
+                td { padding: 8px; border-bottom: 1px solid #ddd; }
+                tr:nth-child(even) { background-color: #f2f2f2; }
+                .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #7f8c8d; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="logo">
+                    <img src="https://governorwavinyacup.com/wavinyacup/assets/images/logo.png" alt="Logo" style="height: 60px;">
+                </div>
+                <div class="report-title">Teams Report' . ($sub_county_id ? ' - ' . htmlspecialchars($db->fetchCell("SELECT name FROM sub_counties WHERE id = :id", ['id'=>$sub_county_id]) ?? '', ENT_QUOTES, 'UTF-8') : '') . '</div>
+                <div class="report-date">Generated on: ' . date('F j, Y, g:i a') . '</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Team Name</th>
+                        <th>Sub-County</th>
+                        <th>Ward</th>
+                        <th>Players</th>
+                        <th>Coach</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>';
+
+        // Add data rows
+        $count = 1;
+        foreach ($report_data as $row) {
+            $html .= '<tr>';
+            $html .= '<td>' . $count++ . '</td>';
+            $html .= '<td>' . htmlspecialchars($row['team_name'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars($row['sub_county_name'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars($row['ward_name'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . (isset($row['player_count']) ? (int)$row['player_count'] : 0) . '</td>';
+            $html .= '<td>' . htmlspecialchars($row['coach_name'] ?? '', ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '<td>' . htmlspecialchars(isset($row['team_status']) ? ucfirst((string)$row['team_status']) : '', ENT_QUOTES, 'UTF-8') . '</td>';
+            $html .= '</tr>';
+        }
+
+        $html .= '</tbody></table>
+            <div class="footer">
+                <p>Governor Wavinya Cup - ' . date('Y') . ' | Generated by ' . $_SERVER['HTTP_HOST'] . '</p>
+            </div>
+        </body>
+        </html>';
+
+        // Prefer local mPDF if available
+        $usedLocalPdf = false;
+        $vendorAutoload = dirname(__DIR__) . '/vendor/autoload.php';
+        if (file_exists($vendorAutoload)) {
+            require_once $vendorAutoload;
+        }
+        if (class_exists('Mpdf\\Mpdf')) {
+            try {
+                $tmpDir = dirname(__DIR__) . '/tmp';
+                if (!is_dir($tmpDir)) { @mkdir($tmpDir, 0775, true); }
+                $mpdf = new Mpdf\\Mpdf(['tempDir' => $tmpDir]);
+                $mpdf->WriteHTML($html);
+                if (ob_get_level()) { ob_end_clean(); }
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: attachment; filename="teams_report_' . date('Ymd_His') . '.pdf"');
+                echo $mpdf->Output('', 'S'); // output as string to flush via echo
+                $usedLocalPdf = true;
+                exit;
+            } catch (Throwable $e) {
+                // fall back to external service
+            }
+        }
+
+        // Use an external HTML to PDF conversion service as fallback
+        $api_url = 'https://api.html2pdf.app/v1/generate';
+        // Prefer environment variable if set; otherwise use provided key
+        $api_key = getenv('HTML2PDF_API_KEY') ?: 'N3N3qIRvWFhGyLFYIS6YEHq60RgbNYTmus3ITyXplmjbyryRWsh2CuGEA8xpUuG8';
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $api_url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        // Timeouts for shared hosting reliability
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 25);
+        // Allow temporarily disabling SSL verify via env flag if host has outdated CA bundle
+        $disableVerify = getenv('HTML2PDF_DISABLE_SSL_VERIFY') === '1';
+        if ($disableVerify) {
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        }
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+            'html' => $html,
+            'apiKey' => $api_key,
+            'filename' => 'teams_report_' . date('Ymd_His') . '.pdf'
+        ]));
+        
+        $response = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+        
+        if ($httpcode === 200 && $response !== false) {
+            // Set headers for a proper PDF download
+            if (ob_get_level()) { ob_end_clean(); }
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: attachment; filename="teams_report_' . date('Ymd_His') . '.pdf"');
+            echo $response; // PDF binary
+        } else {
+            // Log failure details for debugging
+            try {
+                $logsDir = dirname(__DIR__) . '/logs';
+                if (!is_dir($logsDir)) { @mkdir($logsDir, 0775, true); }
+                $logFile = $logsDir . '/pdf_generation.log';
+                $snippet = is_string($response) ? substr($response, 0, 500) : '';
+                $logLine = sprintf("[%s] HTML2PDF failed. HTTP=%s CURL_ERR=%s SNIPPET=%s\n", date('Y-m-d H:i:s'), (string)$httpcode, $curlErr ?: 'none', $snippet);
+                @file_put_contents($logFile, $logLine, FILE_APPEND);
+            } catch (Throwable $e) { /* ignore logging failures */ }
+
+            // If debug flag is set, show details in plain text (no download)
+            if (!empty($_GET['debug_pdf'])) {
+                if (ob_get_level()) { ob_end_clean(); }
+                header('Content-Type: text/plain; charset=UTF-8');
+                echo "PDF generation failed.\n";
+                echo "HTTP Code: " . ($httpcode ?: 'n/a') . "\n";
+                echo "cURL Error: " . ($curlErr ?: 'none') . "\n";
+                $snippet = is_string($response) ? substr($response, 0, 1000) : '';
+                echo "Response snippet:\n" . $snippet . "\n\n";
+                echo "Tips:\n- Ensure outbound HTTPS requests are allowed on the server.\n- If SSL verification issues occur, set env HTML2PDF_DISABLE_SSL_VERIFY=1 temporarily.\n- Verify API key and quota at https://html2pdf.app/\n";
+                exit;
+            }
+            // Fallback to HTML download if PDF generation fails
+            if (ob_get_level()) { ob_end_clean(); }
+            header('Content-Type: text/html');
+            header('Content-Disposition: attachment; filename="teams_report_' . date('Ymd_His') . '.html"');
+            echo $html;
+        }
         exit;
     }
 
@@ -89,15 +241,14 @@ $teams_by_sub_county = $db->fetchAll("
     GROUP BY sc.id, sc.name 
     ORDER BY team_count DESC
 ");
+
+// Load all sub-counties for filter UI
+$all_sub_counties = $db->fetchAll("SELECT id, name FROM sub_counties ORDER BY name");
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports - Governor Wavinya Cup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php $page_title = 'Reports'; include dirname(__DIR__) . '/includes/head.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .sidebar {
@@ -127,8 +278,8 @@ $teams_by_sub_county = $db->fetchAll("
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
                 <div class="text-center mb-4">
-                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                    <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
+                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup 3rd Edition Logo" style="width: 120px; height: auto;" class="mb-2">
+                    <h5 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h5>
                     <small class="text-white-50">Admin Dashboard</small>
                 </div>
 
@@ -251,6 +402,32 @@ $teams_by_sub_county = $db->fetchAll("
                         </div>
                     </div>
                     <div class="col-md-4">
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">
+                                    <i class="fas fa-filter me-2"></i>Report Filter
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="get" class="row g-2">
+                                    <input type="hidden" name="report_type" value="teams">
+                                    <div class="col-12">
+                                        <label for="subCountySelect" class="form-label">Sub-County</label>
+                                        <select id="subCountySelect" name="sub_county_id" class="form-select">
+                                            <option value="">All Sub-Counties</option>
+                                            <?php foreach ($all_sub_counties as $sc): ?>
+                                                <option value="<?php echo (int)$sc['id']; ?>" <?php echo ($sub_county_id && (int)$sub_county_id === (int)$sc['id']) ? 'selected' : ''; ?>>
+                                                    <?php echo htmlspecialchars($sc['name'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 d-grid">
+                                        <button class="btn btn-primary" type="submit">Apply Filter</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
                         <div class="card">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">
@@ -259,10 +436,10 @@ $teams_by_sub_county = $db->fetchAll("
                             </div>
                             <div class="card-body">
                                 <div class="d-grid gap-2">
-                                    <a href="?report_type=teams&format=pdf" class="btn btn-outline-primary">
+                                    <a href="?report_type=teams&format=pdf<?php echo $sub_county_id ? '&sub_county_id=' . (int)$sub_county_id : ''; ?>" class="btn btn-outline-primary">
                                         <i class="fas fa-file-pdf me-2"></i>Generate PDF Report
                                     </a>
-                                    <a href="?report_type=teams&format=excel" class="btn btn-outline-success">
+                                    <a href="?report_type=teams&format=excel<?php echo $sub_county_id ? '&sub_county_id=' . (int)$sub_county_id : ''; ?>" class="btn btn-outline-success">
                                         <i class="fas fa-file-excel me-2"></i>Export to Excel
                                     </a>
                                     <a href="?report_type=analytics&format=json" class="btn btn-outline-info">

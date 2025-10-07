@@ -4,27 +4,46 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 require_once __DIR__ . '/../includes/helpers.php';
 require_once __DIR__ . '/../includes/permissions.php';
+require_once __DIR__ . '/../auth/gmail_oauth.php';
 
-// Check if user has admin permissions
-if (!is_logged_in() || !has_role('admin')) {
-    redirect('../auth/login.php');
+// Check if user has admin permissions using the new GmailOAuth class
+if (!GmailOAuth::isValidAdminSession()) {
+    // Redirect to the admin login page
+    redirect('../auth/admin_login.php');
 }
 
 $user = get_logged_in_user();
 $db = db();
 
-// Get coaches directly from the users table by filtering on the 'role' column
+// Get comprehensive coach details with team information and images
 $query = "
     SELECT 
-        id, 
-        first_name, 
-        last_name, 
-        email, 
-        phone,
-        is_active
-    FROM users 
-    WHERE role = 'coach'
-    ORDER BY created_at DESC
+        u.id, 
+        u.first_name, 
+        u.last_name, 
+        u.email, 
+        u.phone,
+        u.id_number,
+        u.profile_image,
+        u.is_active,
+        u.created_at,
+        c.license_number,
+        c.license_type,
+        c.experience_years,
+        c.specialization,
+        c.certifications,
+        c.coach_image,
+        t.name as team_name,
+        t.team_code,
+        w.name as ward_name,
+        sc.name as sub_county_name
+    FROM users u
+    LEFT JOIN coaches c ON u.id = c.user_id
+    LEFT JOIN teams t ON c.team_id = t.id
+    LEFT JOIN wards w ON t.ward_id = w.id
+    LEFT JOIN sub_counties sc ON w.sub_county_id = sc.id
+    WHERE u.role = 'coach' AND u.approval_status = 'approved'
+    ORDER BY u.created_at DESC
 ";
 
 // Execute the query and check for success
@@ -41,11 +60,7 @@ if ($stmt) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coaches Management - Governor Wavinya Cup</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php $page_title = 'Coaches Management'; include dirname(__DIR__) . '/includes/head.php'; ?>
     <style>
         .sidebar {
             min-height: 100vh;
@@ -82,8 +97,8 @@ if ($stmt) {
         <div class="col-md-3 col-lg-2 px-0">
             <div class="sidebar p-3">
                 <div class="text-center mb-4">
-                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup Logo" style="width: 120px; height: auto;" class="mb-2">
-                    <h5 class="text-white mb-0">Governor Wavinya Cup</h5>
+                    <img src="../assets/images/logo.png" alt="Governor Wavinya Cup 3rd Edition Logo" style="width: 120px; height: auto;" class="mb-2">
+                    <h5 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h5>
                     <small class="text-white-50">Admin Dashboard</small>
                 </div>
 
@@ -144,45 +159,130 @@ if ($stmt) {
                                 </a>
                             </div>
                         <?php else: ?>
-                            <div class="table-responsive">
-                                <table class="table table-hover align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Coach Name</th>
-                                            <th>Email</th>
-                                            <th>Phone</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($coaches as $coach): ?>
-                                            <tr>
-                                                <td>
-                                                    <strong><?php echo htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']); ?></strong>
-                                                </td>
-                                                <td><?php echo htmlspecialchars($coach['email']); ?></td>
-                                                <td><?php echo htmlspecialchars($coach['phone']); ?></td>
-                                                <td>
-                                                    <span class="badge bg-<?php echo $coach['is_active'] ? 'success' : 'secondary'; ?>">
-                                                        <?php echo $coach['is_active'] ? 'Active' : 'Inactive'; ?>
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-eye"></i>
+                            <div class="row">
+                                <?php foreach ($coaches as $coach): ?>
+                                    <div class="col-lg-6 col-xl-4 mb-4">
+                                        <div class="card h-100 shadow-sm">
+                                            <div class="card-body">
+                                                <div class="d-flex align-items-start mb-3">
+                                                    <div class="flex-shrink-0 me-3">
+                                                        <?php 
+                                                        $coach_image = $coach['coach_image'] ?: $coach['profile_image'];
+                                                        if ($coach_image): 
+                                                        ?>
+                                                            <img src="../<?php echo htmlspecialchars($coach_image); ?>" 
+                                                                 alt="Coach Photo" 
+                                                                 class="rounded-circle" 
+                                                                 style="width: 80px; height: 80px; object-fit: cover;">
+                                                        <?php else: ?>
+                                                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white" 
+                                                                 style="width: 80px; height: 80px; font-size: 24px;">
+                                                                <i class="fas fa-user"></i>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <div class="flex-grow-1">
+                                                        <h5 class="card-title mb-1">
+                                                            <?php echo htmlspecialchars($coach['first_name'] . ' ' . $coach['last_name']); ?>
+                                                        </h5>
+                                                        <p class="text-muted small mb-2">
+                                                            <i class="fas fa-envelope me-1"></i>
+                                                            <?php echo htmlspecialchars($coach['email']); ?>
+                                                        </p>
+                                                        <span class="badge bg-<?php echo $coach['is_active'] ? 'success' : 'secondary'; ?>">
+                                                            <?php echo $coach['is_active'] ? 'Active' : 'Inactive'; ?>
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row g-2 mb-3">
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">Phone</small>
+                                                        <span class="fw-medium"><?php echo htmlspecialchars($coach['phone'] ?: 'N/A'); ?></span>
+                                                    </div>
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">ID Number</small>
+                                                        <span class="fw-medium"><?php echo htmlspecialchars($coach['id_number'] ?: 'N/A'); ?></span>
+                                                    </div>
+                                                </div>
+
+                                                <?php if ($coach['team_name']): ?>
+                                                <div class="mb-3">
+                                                    <small class="text-muted d-block">Team</small>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-users text-primary me-2"></i>
+                                                        <span class="fw-medium"><?php echo htmlspecialchars($coach['team_name']); ?></span>
+                                                        <?php if ($coach['team_code']): ?>
+                                                            <span class="badge bg-light text-dark ms-2"><?php echo htmlspecialchars($coach['team_code']); ?></span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <?php if ($coach['ward_name']): ?>
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                                            <?php echo htmlspecialchars($coach['ward_name']); ?>
+                                                            <?php if ($coach['sub_county_name']): ?>
+                                                                , <?php echo htmlspecialchars($coach['sub_county_name']); ?>
+                                                            <?php endif; ?>
+                                                        </small>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <?php endif; ?>
+
+                                                <div class="row g-2 mb-3">
+                                                    <?php if ($coach['license_number']): ?>
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">License</small>
+                                                        <span class="fw-medium"><?php echo htmlspecialchars($coach['license_number']); ?></span>
+                                                        <br><small class="text-capitalize"><?php echo htmlspecialchars($coach['license_type'] ?: ''); ?></small>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    <?php if ($coach['experience_years']): ?>
+                                                    <div class="col-6">
+                                                        <small class="text-muted d-block">Experience</small>
+                                                        <span class="fw-medium"><?php echo htmlspecialchars($coach['experience_years']); ?> years</span>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                                <?php if ($coach['specialization']): ?>
+                                                <div class="mb-3">
+                                                    <small class="text-muted d-block">Specialization</small>
+                                                    <span class="fw-medium"><?php echo htmlspecialchars($coach['specialization']); ?></span>
+                                                </div>
+                                                <?php endif; ?>
+
+                                                <?php if ($coach['certifications']): ?>
+                                                <div class="mb-3">
+                                                    <small class="text-muted d-block">Certifications</small>
+                                                    <small><?php echo nl2br(htmlspecialchars($coach['certifications'])); ?></small>
+                                                </div>
+                                                <?php endif; ?>
+
+                                                <div class="mb-2">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-calendar me-1"></i>
+                                                        Registered: <?php echo date('M j, Y', strtotime($coach['created_at'])); ?>
+                                                    </small>
+                                                </div>
+
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn btn-sm btn-outline-primary flex-fill" 
+                                                            onclick="viewCoach(<?php echo $coach['id']; ?>)">
+                                                        <i class="fas fa-eye me-1"></i>View
                                                     </button>
-                                                    <button class="btn btn-sm btn-outline-warning">
-                                                        <i class="fas fa-edit"></i>
+                                                    <button class="btn btn-sm btn-outline-warning flex-fill" 
+                                                            onclick="editCoach(<?php echo $coach['id']; ?>)">
+                                                        <i class="fas fa-edit me-1"></i>Edit
                                                     </button>
-                                                    <button class="btn btn-sm btn-outline-danger">
+                                                    <button class="btn btn-sm btn-outline-danger" 
+                                                            onclick="deleteCoach(<?php echo $coach['id']; ?>)">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -197,6 +297,42 @@ if ($stmt) {
     document.addEventListener('DOMContentLoaded', function() {
         console.log('Coaches page loaded');
     });
+
+    function viewCoach(coachId) {
+        // Redirect to coach details page
+        window.location.href = `coaches/view_coach.php?id=${coachId}`;
+    }
+
+    function editCoach(coachId) {
+        // Redirect to coach edit page
+        window.location.href = `coaches/manage_coach.php?id=${coachId}`;
+    }
+
+    function deleteCoach(coachId) {
+        if (confirm('Are you sure you want to delete this coach? This action cannot be undone.')) {
+            // Send AJAX request to delete coach
+            fetch('coaches/delete_coach.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ id: coachId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Coach deleted successfully');
+                    location.reload();
+                } else {
+                    alert('Error deleting coach: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the coach');
+            });
+        }
+    }
 </script>
 </body>
 </html>

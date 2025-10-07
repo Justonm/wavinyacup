@@ -1,27 +1,31 @@
 <?php
-require_once dirname(__DIR__) . '/config/config.php';
-require_once dirname(__DIR__) . '/includes/helpers.php';
-require_once dirname(__DIR__) . '/includes/image_upload.php';
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/helpers.php';
+require_once __DIR__ . '/../includes/image_upload.php';
 
-// Check if user is logged in and has permission
-if (!is_logged_in() || !has_permission('manage_teams')) {
-    redirect('../auth/login.php');
+// Start session
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 
-// CORRECTED: Use get_logged_in_user() instead of the deprecated get_current_user_data()
-$user = get_logged_in_user();
+// Check if user is logged in and is admin
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+    header('Location: ../auth/admin_login.php');
+    exit;
+}
+
 $db = db();
 $error = '';
 $success = '';
 
-// Get wards for the form
-$wards = $db->fetchAll("
-    SELECT w.*, sc.name as sub_county_name 
-    FROM wards w 
-    JOIN sub_counties sc ON w.sub_county_id = sc.id 
-    ORDER BY sc.name, w.name
-");
+// Fetch wards for dropdown
+$wards = $db->fetchAll("SELECT id, name FROM wards ORDER BY name");
 
+// Generate CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $team_name = sanitize_input($_POST['team_name'] ?? '');
     $team_description = sanitize_input($_POST['team_description'] ?? '');
@@ -33,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $home_ground = sanitize_input($_POST['home_ground'] ?? '');
     $team_colors = sanitize_input($_POST['team_colors'] ?? '');
     $status = 'pending'; // Default status for new registrations
+    $consent = isset($_POST['consent']);
 
     // Validation
     if (empty($team_name)) {
@@ -41,24 +46,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Please select a ward.';
     } elseif ($founded_year < 1900 || $founded_year > date('Y')) {
         $error = 'Invalid founded year.';
+    } elseif (!$consent) {
+        $error = 'You must agree to the privacy policy to register the team owner.';
     } else {
+        // Enforce mandatory uploads for team logo and team photo
+        if (!isset($_FILES['team_logo']) || $_FILES['team_logo']['error'] === UPLOAD_ERR_NO_FILE) {
+            $error = 'Team logo is required.';
+        } elseif (!isset($_FILES['team_photo']) || $_FILES['team_photo']['error'] === UPLOAD_ERR_NO_FILE) {
+            $error = 'Team photo is required.';
+        } else {
         // Handle image uploads
         $logo_path = null;
         $team_photo_path = null;
 
         // Handle team logo upload
         if (isset($_FILES['team_logo']) && $_FILES['team_logo']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $upload_result = upload_image($_FILES['team_logo'], 'team', 'logo');
+            $upload_result = upload_image($_FILES['team_logo'], 'teams', 'logo');
             if (!$upload_result['success']) {
                 $error = 'Logo upload failed: ' . $upload_result['error'];
             } else {
                 $logo_path = $upload_result['path'];
             }
         }
+        }
         
         // Handle team photo upload
         if (empty($error) && isset($_FILES['team_photo']) && $_FILES['team_photo']['error'] !== UPLOAD_ERR_NO_FILE) {
-            $upload_result = upload_image($_FILES['team_photo'], 'team', 'photo');
+            $upload_result = upload_image($_FILES['team_photo'], 'teams', 'photo');
             if (!$upload_result['success']) {
                 $error = 'Team photo upload failed: ' . $upload_result['error'];
             } else {
@@ -72,8 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sub_county_id = $ward_data['sub_county_id'];
             
             // Generate unique team code
-            $ward = $db->fetchRow("SELECT code FROM wards WHERE id = ?", [$ward_id]);
-            $team_code = generate_team_code($ward['code']);
+            $team_code = generate_team_code($ward_id);
             
             // Start a database transaction
             $db->beginTransaction();
@@ -100,26 +113,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         team_description, 
                         team_logo, 
                         ward_id, 
-                        sub_county_id, 
                         owner_name, 
                         owner_id_number, 
                         owner_phone, 
                         season_year, 
                         status,
-                        registration_date
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE())
+                        registration_date,
+                        owner_consent_given_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURDATE(), ?)
                 ", [
                     $team_id, 
                     $team_name, 
                     $team_description, 
                     $logo_path, 
                     $ward_id, 
-                    $sub_county_id, 
                     $owner_name, 
                     $owner_id_number, 
                     $owner_phone, 
                     date('Y'), 
-                    $status
+                    $status,
+                    date('Y-m-d H:i:s')
                 ]);
 
                 if (!$insert_reg_result) {
@@ -161,44 +174,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Register Team - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .registration-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            margin-top: 2rem;
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-register {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 30px;
-            font-weight: 600;
-        }
-    </style>
+    <link href="../assets/css/main.css" rel="stylesheet">
 </head>
-<body>
+<body class="registration-page">
     <div class="container">
+        <div class="text-center mb-4">
+            <img src="../assets/images/logo.png" alt="Logo" class="sidebar-logo mb-2">
+            <h4 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h4>
+        </div>
         <div class="row justify-content-center">
             <div class="col-md-8">
-                <div class="registration-card p-4">
-                    <div class="text-center mb-4">
-                        <h2><i class="fas fa-futbol me-2"></i>Register New Team</h2>
-                        <p class="text-muted">Create a new team for Machakos County</p>
+                <div class="registration-card">
+                    <div class="registration-card-header text-center">
+                        <h2 class="mb-1"><i class="fas fa-futbol me-2"></i>Register New Team</h2>
+                        <p class="mb-0 text-light op-7">Create a new team for Machakos County</p>
                     </div>
+                    <div class="registration-card-body">
                     
                     <?php if ($error): ?>
                         <div class="alert alert-danger" role="alert">
@@ -232,8 +223,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <option value="">Select Ward</option>
                                         <?php foreach ($wards as $ward): ?>
                                             <option value="<?php echo $ward['id']; ?>" 
-                                                <?php echo ($_POST['ward_id'] ?? '') == $ward['id'] ? 'selected' : ''; ?>>
-                                                <?php echo htmlspecialchars($ward['name'] . ' (' . $ward['sub_county_name'] . ')'); ?>
+                                                    <?php echo ($_POST['ward_id'] ?? '') == $ward['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($ward['name']); ?>
                                             </option>
                                         <?php endforeach; ?>
                                     </select>
@@ -327,8 +318,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <input type="file" class="form-control" id="team_logo" name="team_logo" 
                                         accept="image/*" onchange="previewImage(this, 'logo-preview')">
                                     <small class="form-text text-muted">Upload team logo (JPG, PNG, GIF, max 5MB)</small>
-                                    <div id="logo-preview" class="mt-2" style="display: none;">
-                                        <img src="" alt="Logo Preview" class="img-thumbnail" style="max-width: 150px; max-height: 150px;">
+                                    <div id="logo-preview" class="mt-2 image-preview">
+                                        <img src="" alt="Logo Preview" class="img-thumbnail">
                                     </div>
                                 </div>
                             </div>
@@ -340,13 +331,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <input type="file" class="form-control" id="team_photo" name="team_photo" 
                                         accept="image/*" onchange="previewImage(this, 'photo-preview')">
                                     <small class="form-text text-muted">Upload team photo showing team members (JPG, PNG, GIF, max 5MB)</small>
-                                    <div id="photo-preview" class="mt-2" style="display: none;">
-                                        <img src="" alt="Team Photo Preview" class="img-thumbnail" style="max-width: 300px; max-height: 200px;">
+                                    <div id="photo-preview" class="mt-2 image-preview photo-preview">
+                                        <img src="" alt="Team Photo Preview" class="img-thumbnail">
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="consent" name="consent" required>
+                            <label class="form-check-label" for="consent">
+                                I confirm that the team owner has agreed to the <a href="../legal/privacy_policy.php" target="_blank">Privacy Policy</a> and consents to the processing of their personal data.
+                            </label>
+                        </div>
+
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-register">
                                 <i class="fas fa-save me-2"></i>Register Team
@@ -356,6 +354,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </a>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -378,6 +377,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 preview.style.display = 'none';
             }
         }
+
     </script>
 </body>
 </html>

@@ -1,5 +1,12 @@
 <?php
 
+// Ensure the main config file is loaded to have access to environment variables and constants.
+require_once __DIR__ . '/../config/config.php';
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\SMTP;
+
 // Check if PHPMailer is available via Composer
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once __DIR__ . '/../vendor/autoload.php';
@@ -8,36 +15,37 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     define('PHPMAILER_AVAILABLE', false);
 }
 
+/**
+ * Sends an email using PHPMailer with fallback to PHP mail().
+ * @param string $to_email Recipient's email address.
+ * @param string $subject Email subject.
+ * @param string $body Email body.
+ * @return bool True on success, false on failure.
+ */
 function send_email($to_email, $subject, $body) {
-    // If PHPMailer is not available, log the email instead
     if (!PHPMAILER_AVAILABLE) {
-        error_log("EMAIL NOTIFICATION: To: $to_email, Subject: $subject, Body: $body");
-        return true; // Return true to not break the workflow
+        error_log("PHPMailer is not available. Please install it via Composer.");
+        return false;
     }
-    
-    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+
+    $mail = new PHPMailer(true);
 
     try {
+        // Enable server-side debugging to the error log
+        $mail->SMTPDebug = SMTP::DEBUG_SERVER;
+        $mail->Debugoutput = 'error_log';
+
         // Server settings
         $mail->isSMTP();
-        $mail->Host       = SMTP_HOST;
+        $mail->Host       = $_ENV['SMTP_HOST'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = SMTP_USERNAME;
-        $mail->Password   = SMTP_PASSWORD;
-        $mail->SMTPSecure = SMTP_ENCRYPTION;
-        $mail->Port       = SMTP_PORT;
-        
-        // Additional Gmail settings
-        $mail->SMTPOptions = array(
-            'ssl' => array(
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'allow_self_signed' => true
-            )
-        );
+        $mail->Username   = $_ENV['SMTP_USERNAME'];
+        $mail->Password   = $_ENV['SMTP_PASSWORD'];
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port       = $_ENV['SMTP_PORT'];
 
         // Recipients
-        $mail->setFrom(APP_EMAIL, APP_NAME);
+        $mail->setFrom($_ENV['APP_EMAIL'], APP_NAME);
         $mail->addAddress($to_email);
 
         // Content
@@ -49,16 +57,9 @@ function send_email($to_email, $subject, $body) {
         $mail->send();
         error_log("Email sent successfully to: $to_email");
         return true;
-        
-    } catch (\PHPMailer\PHPMailer\Exception $e) {
-        error_log("Gmail SMTP failed: {$mail->ErrorInfo}");
-        
-        // Log the email content for manual review
-        error_log("EMAIL FALLBACK - To: $to_email, Subject: $subject");
-        error_log("EMAIL CONTENT: " . strip_tags($body));
-        
-        // Return true to not break the workflow - emails are logged for manual sending
-        return true;
+
+    } catch (Exception $e) {
+        error_log("PHPMailer Error: {$mail->ErrorInfo}");
+        return false;
     }
 }
-?>

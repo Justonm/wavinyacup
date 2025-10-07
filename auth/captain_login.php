@@ -62,27 +62,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Captain Login - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            width: 100%;
-            max-width: 400px;
-        }
-    </style>
+    <link href="../assets/css/main.css" rel="stylesheet">
 </head>
-<body>
+<body class="centered-card">
+    <div class="text-center mb-4">
+        <img src="../assets/images/logo.png" alt="Logo" class="sidebar-logo mb-2">
+        <h4 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h4>
+    </div>
     <div class="login-card">
-        <h2 class="text-center mb-4"><i class="fas fa-user-shield me-2"></i>Captain Login</h2>
+        <div class="login-header">
+            <h4 class="mb-0"><i class="fas fa-user-shield me-2"></i>Captain Login</h4>
+        </div>
+        <div class="login-body">
         
         <?php if ($error): ?>
             <div class="alert alert-danger" role="alert"><?php echo $error; ?></div>
@@ -101,6 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-sign-in-alt me-2"></i>Login</button>
             </div>
         </form>
+        </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

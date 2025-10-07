@@ -126,10 +126,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $username = strtolower($first_name . '.' . $last_name . '.' . time());
             $password_hash = password_hash('player123', PASSWORD_DEFAULT); // Default password
             
+            // Handle empty email by setting to NULL
+            $email_value = !empty($email) ? $email : null;
+            
             $db->query("
                 INSERT INTO users (username, email, password_hash, role, first_name, last_name, phone, id_number) 
                 VALUES (?, ?, ?, 'player', ?, ?, ?, ?)
-            ", [$username, $email, $password_hash, $first_name, $last_name, $phone, $id_number]);
+            ", [$username, $email_value, $password_hash, $first_name, $last_name, $phone, $id_number]);
             
             $user_id = $db->lastInsertId();
             
@@ -174,11 +177,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Players - <?php echo APP_NAME; ?></title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <?php $page_title = 'Register Players'; include dirname(__DIR__) . '/includes/head.php'; ?>
     <style>
         body {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

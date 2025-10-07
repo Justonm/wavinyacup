@@ -16,6 +16,19 @@ $db = db();
 $error = '';
 $success = '';
 
+// Get sub counties and wards for the form
+$sub_counties = $db->fetchAll("
+    SELECT * FROM sub_counties 
+    ORDER BY name
+");
+
+$wards = $db->fetchAll("
+    SELECT w.*, sc.name as sub_county_name 
+    FROM wards w 
+    JOIN sub_counties sc ON w.sub_county_id = sc.id 
+    ORDER BY sc.name, w.name
+");
+
 // Get teams for the form - restrict captains to their own team only
 if (has_role('captain')) {
     // CORRECTED: Filter teams by the coach_id column, which represents the user ID for a captain
@@ -48,7 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $height_cm = (int)($_POST['height_cm'] ?? 0);
     $weight_kg = (float)($_POST['weight_kg'] ?? 0);
     $preferred_foot = $_POST['preferred_foot'] ?? 'right';
+    $sub_county_id = (int)($_POST['sub_county_id'] ?? 0);
+    $ward_id = (int)($_POST['ward_id'] ?? 0);
     $team_id = (int)($_POST['team_id'] ?? 0);
+    $consent = isset($_POST['consent']);
 
     // --- Validation Block ---
     if (empty($first_name) || empty($last_name)) {
@@ -61,6 +77,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'ID number is required.';
     } elseif (empty($date_of_birth)) {
         $error = 'Date of birth is required.';
+    } elseif ($sub_county_id <= 0) {
+        $error = 'Please select a sub county.';
+    } elseif ($ward_id <= 0) {
+        $error = 'Please select a ward.';
+    } elseif (!$consent) {
+        $error = 'You must agree to the privacy policy to register.';
     } elseif (empty($position)) {
         $error = 'Please select a position.';
     } elseif ($jersey_number < 1 || $jersey_number > 99) {
@@ -172,9 +194,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             // Create player profile
             $db->query("
-                INSERT INTO players (user_id, team_id, position, jersey_number, height_cm, weight_kg, date_of_birth, preferred_foot, player_image, id_photo_front, id_photo_back, is_active)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-            ", [$user_id, $team_id, $position, $jersey_number, $height_cm, $weight_kg, $date_of_birth, $preferred_foot, $player_image, $id_front_image, $id_back_image]);
+                INSERT INTO players (user_id, team_id, ward_id, position, jersey_number, height_cm, weight_kg, date_of_birth, preferred_foot, player_image, id_photo_front, id_photo_back, is_active, consent_given_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+            ", [$user_id, $team_id, $ward_id, $position, $jersey_number, $height_cm, $weight_kg, $date_of_birth, $preferred_foot, $player_image, $id_front_image, $id_back_image, date('Y-m-d H:i:s')]);
 
             $player_id = $db->lastInsertId();
 
@@ -218,44 +240,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Register Player - <?php echo APP_NAME; ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
-        .registration-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            margin-top: 2rem;
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-register {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px 30px;
-            font-weight: 600;
-        }
-    </style>
+    <link href="../assets/css/main.css" rel="stylesheet">
 </head>
-<body>
+<body class="registration-page">
     <div class="container">
+        <div class="text-center mb-4">
+            <img src="../assets/images/logo.png" alt="Logo" class="sidebar-logo mb-2">
+            <h4 class="text-white mb-0">Governor Wavinya Cup 3rd Edition</h4>
+        </div>
         <div class="row justify-content-center">
             <div class="col-md-10">
-                <div class="registration-card p-4">
-                    <div class="text-center mb-4">
-                        <h2><i class="fas fa-user me-2"></i>Register New Player</h2>
-                        <p class="text-muted">Add a new player to the system</p>
+                <div class="registration-card">
+                    <div class="registration-card-header text-center">
+                        <h2 class="mb-1"><i class="fas fa-user me-2"></i>Register New Player</h2>
+                        <p class="mb-0 text-light op-7">Add a new player to the system</p>
                     </div>
+                    <div class="registration-card-body">
 
                     <?php if ($error): ?>
                         <div class="alert alert-danger" role="alert">
@@ -329,6 +329,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     </label>
                                     <input type="date" class="form-control" id="date_of_birth" name="date_of_birth"
                                         value="<?php echo htmlspecialchars($_POST['date_of_birth'] ?? ''); ?>" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="sub_county_id" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Sub County *
+                                    </label>
+                                    <select class="form-control" id="sub_county_id" name="sub_county_id" required onchange="filterWards()">
+                                        <option value="">Select Sub County</option>
+                                        <?php foreach ($sub_counties as $sub_county): ?>
+                                            <option value="<?php echo $sub_county['id']; ?>" <?php echo ($_POST['sub_county_id'] ?? '') == $sub_county['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($sub_county['name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ward_id" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-2"></i>Ward *
+                                    </label>
+                                    <select class="form-control" id="ward_id" name="ward_id" required>
+                                        <option value="">Select Ward</option>
+                                        <?php foreach ($wards as $ward): ?>
+                                            <option value="<?php echo $ward['id']; ?>" 
+                                                    data-sub-county="<?php echo $ward['sub_county_id']; ?>"
+                                                    <?php echo ($_POST['ward_id'] ?? '') == $ward['id'] ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($ward['name']); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -422,8 +457,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <input type="file" class="form-control" id="player_image" name="player_image"
                                         accept="image/*" onchange="previewImage(this, 'player-preview')">
                                     <small class="form-text text-muted">Upload player photo (JPG, PNG, GIF, max 5MB)</small>
-                                    <div id="player-preview" class="mt-2" style="display: none;">
-                                        <img src="" alt="Player Preview" class="img-thumbnail" style="max-width: 150px; max-height: 200px;">
+                                    <div id="player-preview" class="mt-2 image-preview player-preview">
+                                        <img src="" alt="Player Preview" class="img-thumbnail">
                                     </div>
                                 </div>
                             </div>
@@ -435,8 +470,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <input type="file" class="form-control" id="id_photo_front" name="id_photo_front"
                                         accept="image/*" onchange="previewImage(this, 'id-front-preview')">
                                     <small class="form-text text-muted">Upload a clear photo of the ID card front.</small>
-                                    <div id="id-front-preview" class="mt-2" style="display: none;">
-                                        <img src="" alt="ID Front Preview" class="img-thumbnail" style="max-width: 150px; max-height: 100px;">
+                                    <div id="id-front-preview" class="mt-2 image-preview id-preview">
+                                        <img src="" alt="ID Front Preview" class="img-thumbnail">
                                     </div>
                                 </div>
                             </div>
@@ -448,14 +483,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <input type="file" class="form-control" id="id_photo_back" name="id_photo_back"
                                         accept="image/*" onchange="previewImage(this, 'id-back-preview')">
                                     <small class="form-text text-muted">Upload a clear photo of the ID card back.</small>
-                                    <div id="id-back-preview" class="mt-2" style="display: none;">
-                                        <img src="" alt="ID Back Preview" class="img-thumbnail" style="max-width: 150px; max-height: 100px;">
+                                    <div id="id-back-preview" class="mt-2 image-preview id-preview">
+                                        <img src="" alt="ID Back Preview" class="img-thumbnail">
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="d-grid gap-2">
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="consent" name="consent" required>
+                            <label class="form-check-label" for="consent">
+                                I agree to the <a href="../legal/privacy_policy.php" target="_blank">Privacy Policy</a> and consent to the processing of my personal data.
+                            </label>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
                             <button type="submit" class="btn btn-primary btn-register">
                                 <i class="fas fa-save me-2"></i>Register Player
                             </button>
@@ -464,6 +506,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </a>
                         </div>
                     </form>
+                    </div>
                 </div>
             </div>
         </div>
@@ -484,6 +527,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 reader.readAsDataURL(input.files[0]);
             } else {
                 preview.style.display = 'none';
+            }
+        }
+
+        function filterWards() {
+            const subCountySelect = document.getElementById('sub_county_id');
+            const wardSelect = document.getElementById('ward_id');
+            const selectedSubCounty = subCountySelect.value;
+            
+            // Clear ward selection
+            wardSelect.innerHTML = '<option value="">Select Ward</option>';
+            
+            if (selectedSubCounty) {
+                <?php foreach ($wards as $ward): ?>
+                if ('<?php echo $ward['sub_county_id']; ?>' === selectedSubCounty) {
+                    const option = document.createElement('option');
+                    option.value = '<?php echo $ward['id']; ?>';
+                    option.textContent = '<?php echo htmlspecialchars($ward['name']); ?>';
+                    option.setAttribute('data-sub-county', '<?php echo $ward['sub_county_id']; ?>');
+                    wardSelect.appendChild(option);
+                }
+                <?php endforeach; ?>
             }
         }
     </script>
